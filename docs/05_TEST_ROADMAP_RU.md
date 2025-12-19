@@ -182,4 +182,12 @@
   - При этом прилетел admin alert от reports-worker из-за `pg_filenode.map: Permission denied` (Postgres bind-mount).
   - Фиксы: Postgres переведён на named volume, zero-address заблокирован; нужен повторный прогон на реальном адресе.
 
+### 2025-12-19 — E2E: оплата 3 USDT TRC20 + доставка отчёта (с ретраями Infura)
+- **Скоуп**: payments / reports
+- **Результат**: PASS *(после фикса троттлинга/ретраев)*
+- **Заметки**:
+  - Платёж на TRON-адрес заказа найден, заказ стал `PAID`.
+  - Первичная генерация упала на Infura rate limit `-32005 Too Many Requests`, но после включения троттлинга/ретраев отчёт успешно доставлен.
+  - Заказ завершён `DELIVERED`, CSV сгенерирован.
+
 

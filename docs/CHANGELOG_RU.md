@@ -25,6 +25,19 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 14:00  
+**Коротко**: Доведён до DELIVERED уже оплаченный заказ (3 USDT) без повторной оплаты — Infura throttling/ретраи отработали  
+**Детали**:
+- **Сделано**:
+  - исправлен детектор rate-limit в ethers `BAD_DATA` (Infura `-32005` лежит внутри `value[]`)
+  - усилен throttle `eth_getLogs` (~1.2s между запросами) + backoff на 429
+  - `reports-worker` при rate limit возвращает заказ в `PAID` (ретрай), а не переводит в `FAILED`
+  - заказ `feb9c926-...` успешно дошёл до `DELIVERED`, CSV сохранён в `/data/reports/orders/<order_id>/report.csv`
+- **Файлы**:
+  - `src/eth/approvals/rpcApprovalEventProvider.ts`
+  - `src/workers/reportsWorker.ts`
+  - `docs/05_TEST_ROADMAP_RU.md`
+
 **Дата/время**: 2025-12-19 13:45  
 **Коротко**: Оплата 3 USDT засчитана, но отчёт упал на Infura rate limit — добавлены ретраи и автоповтор без повторной оплаты  
 **Детали**:
