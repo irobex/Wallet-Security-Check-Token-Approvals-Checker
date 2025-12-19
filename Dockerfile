@@ -9,6 +9,13 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
+# Copy non-TS runtime assets into dist (tsc doesn't copy them):
+# - SQL migrations (used by dist/db/migrate.js)
+# - EJS templates (used by dist/reports/html.js → PDF renderer)
+RUN mkdir -p dist/db/migrations dist/reports/templates \
+  && cp -r src/db/migrations/*.sql dist/db/migrations/ \
+  && cp -r src/reports/templates/*.ejs dist/reports/templates/
+
 # Runtime: include Playwright dependencies for PDF generation (Chromium).
 # Using Playwright base image simplifies Debian deployment (no extra apt libs).
 FROM mcr.microsoft.com/playwright:v1.49.1-jammy

@@ -25,6 +25,19 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 12:05  
+**Коротко**: Dockerfile копирует migrations/templates в dist (фикс миграций и HTML/PDF в проде)  
+**Детали**:
+- **Сделано**:
+  - добавлено копирование runtime-ассетов в `dist/` на build-стейдже:
+    - `src/db/migrations/*.sql` → `dist/db/migrations/`
+    - `src/reports/templates/*.ejs` → `dist/reports/templates/`
+- **Файлы**: `Dockerfile`
+- **Причина/контекст**: `tsc` не копирует `.sql/.ejs`, из-за чего `node dist/db/migrate.js` падал (`ENOENT dist/db/migrations`), а HTML/PDF отчёты не нашли бы шаблоны.
+- **Проверка**:
+  - `docker compose build`
+  - `docker compose run --rm bot node dist/db/migrate.js` проходит
+
 **Дата/время**: 2025-12-19 11:40  
 **Коротко**: Исправлен TS тип tronweb (fromPrivateKey возвращает string|false) для успешного `tsc` в Docker  
 **Детали**:
