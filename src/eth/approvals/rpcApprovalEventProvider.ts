@@ -32,11 +32,18 @@ export class RpcApprovalEventProvider implements ApprovalEventProvider {
       const end = Math.min(toBlock, start + chunk - 1);
       logger.info(`eth_getLogs Approval(owner) blocks ${start}..${end}`);
 
-      const logs = await provider.getLogs({
-        fromBlock: start,
-        toBlock: end,
-        topics: [APPROVAL_TOPIC, ownerTopic]
-      });
+      let logs: any[];
+      try {
+        logs = await provider.getLogs({
+          fromBlock: start,
+          toBlock: end,
+          topics: [APPROVAL_TOPIC, ownerTopic]
+        });
+      } catch (e) {
+        const msg = (e as Error)?.message ?? String(e);
+        logger.error(`eth_getLogs failed for blocks ${start}..${end}: ${msg}`);
+        throw e;
+      }
 
       for (const log of logs) {
         const parsed = ERC20_IFACE.parseLog({ topics: log.topics as string[], data: log.data });

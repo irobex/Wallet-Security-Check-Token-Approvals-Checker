@@ -5,6 +5,7 @@ import { plansInlineKeyboard } from "../ui/keyboards.js";
 import type { UserSession } from "../state.js";
 import { buildApprovalsReport } from "../../reports/engine.js";
 import { getEthProvider } from "../../eth/provider.js";
+import { logger } from "../../core/logger.js";
 
 export async function handleWalletInput(ctx: Context, session: UserSession) {
   const rawText =
@@ -47,8 +48,12 @@ export async function handleWalletInput(ctx: Context, session: UserSession) {
         });
         usedRange = r;
         break;
-      } catch {
-        // try smaller range
+      } catch (e) {
+        logger.warn(
+          `free preview failed for ${text} range=${r} blocks (${fromBlock}..${latest}): ${(e as Error)?.message ?? String(e)}`
+        );
+        // Backoff a bit to avoid immediate rate-limit cascades on Infura
+        await new Promise((res) => setTimeout(res, 800));
       }
     }
 
