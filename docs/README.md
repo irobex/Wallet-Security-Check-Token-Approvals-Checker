@@ -51,7 +51,7 @@ CSV / HTML / PDF exports (depending on plan)
 Telegram: https://t.me/WalletGuardSecurityBot
 
 Pricing
-Lite — 3 USDT *(temporary for e2e payment testing)*
+Lite — 10 USDT *(NOWPayments min-amount constraint)*
 Ethereum approvals overview
 
 limited list of approvals

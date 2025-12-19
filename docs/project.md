@@ -71,7 +71,7 @@ PDF/HTML файл (по тарифу),
 2) Тарифы (3 уровня)
 2.1 Lite (дешёвый, “пощупать”)
 
-Цена: 3 USDT *(temporary for e2e payment testing)*
+Цена: 10 USDT *(NOWPayments min-amount constraint)*
 Функции:
 
 1 сеть анализа: Ethereum

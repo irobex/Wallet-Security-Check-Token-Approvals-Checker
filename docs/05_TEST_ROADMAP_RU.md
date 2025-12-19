@@ -181,7 +181,7 @@
   - При этом прилетел admin alert от reports-worker из-за `pg_filenode.map: Permission denied` (Postgres bind-mount).
   - Фиксы: Postgres переведён на named volume, zero-address заблокирован; нужен повторный прогон на реальном адресе.
 
-### 2025-12-19 — E2E: оплата 3 USDT (NOWPayments) + доставка отчёта (с ретраями Infura)
+### 2025-12-19 — E2E: оплата 10 USDT (NOWPayments) + доставка отчёта (с ретраями Infura)
 - **Скоуп**: payments / reports
 - **Результат**: PASS *(после фикса троттлинга/ретраев)*
 - **Заметки**:

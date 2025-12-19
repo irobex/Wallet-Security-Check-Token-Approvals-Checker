@@ -75,7 +75,7 @@ docker compose logs -f
 
 ## Pricing (in Telegram)
 
-- Lite — 3 USDT *(temporary for e2e payment testing)*
+- Lite — 10 USDT *(NOWPayments min-amount constraint)*
 - Pro — 25 USDT
 - Max — 79 USDT
 
