@@ -6,7 +6,9 @@ import type { UserSession } from "../state.js";
 import { buildApprovalsReport } from "../../reports/engine.js";
 
 export async function handleWalletInput(ctx: Context, session: UserSession) {
-  const text = ctx.message && "text" in ctx.message ? ctx.message.text.trim() : "";
+  const rawText =
+    ctx.message && "text" in ctx.message && typeof ctx.message.text === "string" ? ctx.message.text : undefined;
+  const text = rawText?.trim() ?? "";
   if (!isEthAddress(text)) {
     await ctx.reply(TEXTS.invalidWallet);
     return;

@@ -25,6 +25,20 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 11:35  
+**Коротко**: Починена сборка TypeScript (3 ошибки) для успешного Docker build на Debian 12  
+**Детали**:
+- **Сделано**:
+  - исправлено чтение текста сообщения в обработчике ввода адреса (строгие типы grammY)
+  - добавлен guard на случай отсутствия события `Approval` в ABI интерфейсе
+  - исправлен вызов tronweb для derivation адреса (`TronWeb.utils.address.fromPrivateKey`)
+- **Файлы**:
+  - `src/bot/handlers/checkWallet.ts`
+  - `src/eth/approvals/rpcApprovalEventProvider.ts`
+  - `src/payments/tron/hd.ts`
+- **Причина/контекст**: `docker compose build` падал на `tsc` с TypeScript ошибками, блокируя деплой.
+- **Проверка**: `docker compose build` проходит, контейнеры поднимаются.
+
 **Дата/время**: 2025-12-19 11:25  
 **Коротко**: Начат деплой на чистый Debian 12 (Docker/UFW/user) + подготовка публикации на GitHub  
 **Детали**:

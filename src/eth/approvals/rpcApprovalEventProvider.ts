@@ -4,7 +4,11 @@ import { getEthProvider } from "../provider.js";
 import { ERC20_IFACE } from "../erc20.js";
 import type { ApprovalEvent, ApprovalEventProvider, ApprovalEventQuery } from "./types.js";
 
-const APPROVAL_TOPIC = ERC20_IFACE.getEvent("Approval").topicHash;
+const approvalEvent = ERC20_IFACE.getEvent("Approval");
+if (!approvalEvent) {
+  throw new Error("ERC20 interface is missing Approval event ABI");
+}
+const APPROVAL_TOPIC = approvalEvent.topicHash;
 
 function topicOfAddress(addr: string): string {
   // 32-byte topic: left-padded address

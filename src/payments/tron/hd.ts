@@ -39,7 +39,7 @@ export function deriveTronAddressFromMnemonic(mnemonic: string, index: number): 
   const path = tronDerivationPath(index);
   const wallet = HDNodeWallet.fromPhrase(mnemonic, undefined, path);
   const priv = wallet.privateKey.startsWith("0x") ? wallet.privateKey.slice(2) : wallet.privateKey;
-  return TronWeb.address.fromPrivateKey(priv);
+  return TronWeb.utils.address.fromPrivateKey(priv);
 }
 
 
