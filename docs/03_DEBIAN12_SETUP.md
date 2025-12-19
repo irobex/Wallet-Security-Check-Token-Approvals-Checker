@@ -99,8 +99,10 @@ cd wallet-guard
 
 ```bash
 mkdir -p data/reports
-mkdir -p data/postgres
 ```
+
+Примечание: Postgres хранится в **Docker named volume** (это защищает от проблем с правами на bind-mount).  
+Поэтому `data/postgres` создавать не нужно.
 
 ---
 

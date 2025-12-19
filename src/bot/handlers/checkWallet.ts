@@ -1,5 +1,5 @@
 import type { Context } from "grammy";
-import { isEthAddress } from "../../core/validation.js";
+import { isEthAddress, isZeroEthAddress } from "../../core/validation.js";
 import { TEXTS } from "../ui/texts.js";
 import { plansInlineKeyboard } from "../ui/keyboards.js";
 import type { UserSession } from "../state.js";
@@ -11,6 +11,10 @@ export async function handleWalletInput(ctx: Context, session: UserSession) {
   const text = rawText?.trim() ?? "";
   if (!isEthAddress(text)) {
     await ctx.reply(TEXTS.invalidWallet);
+    return;
+  }
+  if (isZeroEthAddress(text)) {
+    await ctx.reply(TEXTS.zeroWallet);
     return;
   }
 

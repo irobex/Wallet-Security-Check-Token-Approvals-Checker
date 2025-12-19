@@ -25,6 +25,26 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 12:20  
+**Коротко**: Устранены проблемы теста: Postgres permissions (bind-mount) и zero-address в free preview  
+**Детали**:
+- **Сделано**:
+  - переведён Postgres на docker **named volume** (`postgres_data`) вместо bind-mount `./data/postgres`, чтобы исключить “слёт” прав от `chown`
+  - в боте добавлена защита от ввода `0x000…000` (zero address), т.к. этот тест-кейс провоцирует тяжёлый `eth_getLogs` и лимиты провайдера
+  - `docs/03_DEBIAN12_SETUP.md` обновлён под named volume
+- **Файлы**:
+  - `docker-compose.yml`
+  - `src/core/validation.ts`
+  - `src/bot/handlers/checkWallet.ts`
+  - `src/bot/ui/texts.ts`
+  - `docs/03_DEBIAN12_SETUP.md`
+- **Причина/контекст**:
+  - bind-mount Postgres ломался при изменении владельца каталога (видели `pg_filenode.map: Permission denied`)
+  - free preview на нулевом адресе упирался в RPC/лимиты.
+- **Проверка**:
+  - `docker compose up -d db` поднимается стабильно
+  - `/start` → “Проверить кошелёк” → ввод 0x000…000 даёт дружелюбную ошибку
+
 **Дата/время**: 2025-12-19 12:10  
 **Коротко**: Поднят полный docker-compose стек на Debian 12, применены миграции, определён username бота  
 **Детали**:
