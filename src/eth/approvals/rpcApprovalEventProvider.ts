@@ -11,8 +11,16 @@ if (!approvalEvent) {
 const APPROVAL_TOPIC = approvalEvent.topicHash;
 
 function isRateLimitError(e: unknown): boolean {
-  const msg = (e as any)?.shortMessage ?? (e as any)?.message ?? String(e);
-  return /Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005;
+  const msg = (e as any)?.message ?? (e as any)?.shortMessage ?? String(e);
+  if (/Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005) return true;
+  const v = (e as any)?.value;
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      if (item?.code === -32005) return true;
+      if (typeof item?.message === "string" && /Too Many Requests/i.test(item.message)) return true;
+    }
+  }
+  return false;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -54,7 +62,8 @@ export class RpcApprovalEventProvider implements ApprovalEventProvider {
           const msg = (e as any)?.shortMessage ?? (e as Error)?.message ?? String(e);
           logger.error(`eth_getLogs failed for blocks ${start}..${end} (attempt ${attempt + 1}): ${msg}`);
           if (isRateLimitError(e) && attempt < 6) {
-            await sleep(1500 * (attempt + 1));
+            // Infura throttling: slow down aggressively.
+            await sleep(5000 * (attempt + 1));
             continue;
           }
           throw e;
@@ -62,7 +71,7 @@ export class RpcApprovalEventProvider implements ApprovalEventProvider {
       }
 
       // Throttle even on success to avoid hitting provider RPS limits.
-      await sleep(250);
+      await sleep(1200);
 
       for (const log of logs) {
         const parsed = ERC20_IFACE.parseLog({ topics: log.topics as string[], data: log.data });

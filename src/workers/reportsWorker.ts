@@ -19,8 +19,16 @@ logger.info("reports-worker started");
 const bot = getTelegramBot();
 
 function isRateLimitError(e: unknown): boolean {
-  const msg = (e as any)?.shortMessage ?? (e as any)?.message ?? String(e);
-  return /Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005;
+  const msg = (e as any)?.message ?? (e as any)?.shortMessage ?? String(e);
+  if (/Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005) return true;
+  const v = (e as any)?.value;
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      if (item?.code === -32005) return true;
+      if (typeof item?.message === "string" && /Too Many Requests/i.test(item.message)) return true;
+    }
+  }
+  return false;
 }
 
 function reportDir(orderId: string): string {
