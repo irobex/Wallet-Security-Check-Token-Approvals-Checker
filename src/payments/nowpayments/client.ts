@@ -65,7 +65,17 @@ export class NowPaymentsClient {
     const text = await resp.text();
     if (!resp.ok) {
       logger.warn(`NOWPayments API error ${resp.status} ${resp.statusText}: ${text.slice(0, 2000)}`);
-      throw new Error(`NOWPayments API error: HTTP ${resp.status}`);
+      // Include provider error details to reduce repeated paid tests.
+      let details = text.slice(0, 500);
+      try {
+        const j = JSON.parse(text) as any;
+        const code = typeof j?.code === "string" ? j.code : undefined;
+        const msg = typeof j?.message === "string" ? j.message : undefined;
+        details = `${code ?? "ERROR"}: ${msg ?? text}`.slice(0, 500);
+      } catch {
+        // keep raw text snippet
+      }
+      throw new Error(`NOWPayments API error: HTTP ${resp.status} (${details})`);
     }
 
     try {

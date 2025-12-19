@@ -21,7 +21,9 @@ export const config = {
   // Payments aggregator (NOWPayments)
   nowpaymentsApiKey: getEnv("NOWPAYMENTS_API_KEY"),
   nowpaymentsBaseUrl: getEnv("NOWPAYMENTS_BASE_URL", "https://api.nowpayments.io")!,
-  nowpaymentsPriceCurrency: getEnv("NOWPAYMENTS_PRICE_CURRENCY", "usd")!,
+  // IMPORTANT: Using fiat (usd) can cause NOWPayments to convert and fail minimal-amount checks
+  // (e.g. 3 USD -> 2.98 usdttrc20). Default to pricing directly in the pay currency.
+  nowpaymentsPriceCurrency: getEnv("NOWPAYMENTS_PRICE_CURRENCY", "usdttrc20")!,
   nowpaymentsPayCurrency: getEnv("NOWPAYMENTS_PAY_CURRENCY", "usdttrc20")!,
 
 
