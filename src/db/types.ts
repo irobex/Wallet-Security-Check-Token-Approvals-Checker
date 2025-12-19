@@ -23,8 +23,13 @@ export type OrderRow = {
   plan: Plan;
   price_usdt: string;
   status: OrderStatus;
-  pay_address: string;
-  hd_index: number;
+  payment_provider: string;
+  provider_payment_id: string | null;
+  provider_status: string | null;
+  pay_address: string | null;
+  pay_currency: string | null;
+  pay_amount: string | null;
+  invoice_url: string | null;
   tx_hash: string | null;
   paid_amount: string | null;
   created_at: Date;

@@ -19,7 +19,7 @@ Wallet Guard answers 3 practical questions:
 2. **Which approvals are risky (unlimited / old / unknown spender)?**  
 3. **What should you revoke now vs review later?**
 
-The full report is delivered in Telegram in ~1 minute after payment in **USDT (TRC20)**.
+The full report is delivered in Telegram in ~1–2 minutes after payment via **NOWPayments** (default: **USDT TRC20**).
 
 ---
 
@@ -37,7 +37,7 @@ npm install
 node index.js 0x0000000000000000000000000000000000000000
 The free preview is intentionally limited. For the full risk report with actionable recommendations, use the Telegram bot.
 
-Get the full report in Telegram (USDT TRC20)
+Get the full report in Telegram (NOWPayments)
 Telegram bot delivers:
 
 risk score (LOW / MEDIUM / HIGH)

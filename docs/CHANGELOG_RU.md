@@ -503,3 +503,29 @@
   - `src/core/config.ts`
   - `src/workers/paymentsWorker.ts`
   - `env.example`
+
+## 2025-12-19 — Переход на платёжный агрегатор (NOWPayments) и удаление TRON подсистемы
+
+- **Скоуп**: payments / db / docs
+- **Сделано**:
+  - Переход с самописного TRON мониторинга (TronGrid/HD/mnemonic/sweep) на **NOWPayments**.
+  - Добавлен клиент NOWPayments (`POST /v1/payment`, `GET /v1/payment/{id}`) и новый конфиг `NOWPAYMENTS_*`.
+  - Бот теперь создаёт инвойс через NOWPayments и показывает пользователю реквизиты оплаты (адрес/сумма/валюта, опционально invoice URL).
+  - `payments-worker` теперь опрашивает статус платежа по `provider_payment_id` и переводит заказ в `PAID`.
+  - Миграция БД: удалены `tron_hd_state`/`hd_index`, добавлены поля провайдера (`provider_payment_id`, `provider_status`, `pay_currency`, `pay_amount`, `invoice_url`).
+  - Удалён код `src/payments/tron/**` и зависимость `tronweb`.
+  - Обновлены документы деплоя/hand-off/roadmap тестирования под NOWPayments.
+- **Причина**:
+  - TRON energy/TRX комиссии на `USDT.transfer()` и необходимость sweep делают самописный сбор средств экономически/операционно невыгодным.
+  - Агрегатор снимает с нас управление TRON-кошельками и “энергией”.
+- **Файлы**:
+  - `src/payments/nowpayments/client.ts`
+  - `src/bot/bot.ts`
+  - `src/workers/paymentsWorker.ts`
+  - `src/db/migrations/003_payments_nowpayments.sql`
+  - `src/db/migrations/001_init.sql`
+  - `src/db/repos/ordersRepo.ts`
+  - `src/db/types.ts`
+  - `src/core/config.ts`
+  - `env.example`
+  - `docs/03_DEBIAN12_SETUP.md`, `docs/04_HANDOFF_DEBIAN12_CHAT_RU.md`, `docs/05_TEST_ROADMAP_RU.md`, `docs/00_ROADMAP_RU.md`, `docs/02_TEST_PLAN_RU.md`, `docs/project.md`, `docs/README.md`

@@ -6,8 +6,7 @@
 - `BOT_TOKEN` (BotFather)
 - `ADMIN_TELEGRAM_ID` (ваш Telegram user id) — для алертов
 - `ETH_RPC_URL` (Ethereum RPC с нормальными лимитами на `eth_getLogs`)
-- `TRONGRID_API_KEY`
-- `TRON_MNEMONIC` (HD кошелёк; хранить в секрете)
+- `NOWPAYMENTS_API_KEY` (аккаунт NOWPayments → API key)
 
 ---
 
@@ -125,15 +124,11 @@ REPORTS_STORAGE_PATH=/data/reports
 
 ETH_RPC_URL=
 
-TRON_MNEMONIC=
-TRONGRID_API_KEY=
-
-# Optional: auto-sweep paid USDT from per-order address to a single treasury wallet.
-# You will still need to keep TRX on the treasury address for fees, but NOT on every per-order address manually.
-TRON_SWEEP_ENABLED=false
-TRON_SWEEP_TO_ADDRESS=
-TRON_TREASURY_HD_INDEX=0
-TRON_SWEEP_TOPUP_TRX=10
+# Payments (NOWPayments)
+NOWPAYMENTS_API_KEY=
+NOWPAYMENTS_BASE_URL=https://api.nowpayments.io
+NOWPAYMENTS_PRICE_CURRENCY=usd
+NOWPAYMENTS_PAY_CURRENCY=usdttrc20
 
 # Ethereum approvals scan tuning (optional)
 ETH_APPROVALS_FROM_BLOCK=0
@@ -143,7 +138,7 @@ ETH_APPROVALS_MAX_RANGE_BLOCKS=200000
 
 Важно:
 - никогда не коммитьте `.env`
-- держите `TRON_MNEMONIC` в секрете
+- держите `NOWPAYMENTS_API_KEY` в секрете
 
 ---
 
@@ -261,7 +256,7 @@ tar -czf ~/walletguard_reports_backup.tar.gz data/reports
 
 - бот отвечает на `/start`
 - free preview работает на тестовом адресе
-- создание заказа выдаёт уникальный TRON-адрес
-- payments-worker видит TRC20 Transfer (после тестовой оплаты)
+- создание заказа выдаёт адрес/сумму от NOWPayments
+- payments-worker видит смену статуса платежа (после тестовой оплаты)
 - reports-worker генерирует отчёт и доставляет в Telegram
 - сервис переживает reboot (если включён systemd unit)

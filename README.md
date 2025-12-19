@@ -11,9 +11,9 @@ If you searched for: **wallet approvals check**, **revoke token approvals**, **u
 
 ## What this repo contains
 
-- Telegram bot (paid full reports, payment in **USDT TRC20**)
+- Telegram bot (paid full reports, payment via **NOWPayments**; default: **USDT TRC20**)
 - Workers:
-  - payments worker (monitors TRC20 transfers to unique addresses)
+  - payments worker (polls NOWPayments payment status)
   - reports worker (generates CSV/HTML/PDF)
   - monitoring worker (Max plan alerts)
 - Free preview script (basic approvals overview)

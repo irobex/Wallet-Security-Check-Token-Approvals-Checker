@@ -2,7 +2,7 @@
   "name": "wallet-guard",
   "version": "0.1.0",
   "private": true,
-  "description": "Wallet Guard — read-only approvals checker with Telegram bot and USDT TRC20 payments",
+  "description": "Wallet Guard — read-only approvals checker with Telegram bot and crypto payments via NOWPayments",
   "license": "MIT",
   "engines": {
     "node": ">=20"
@@ -28,8 +28,7 @@
     "ethers": "^6.13.4",
     "grammy": "^1.35.0",
     "playwright": "^1.49.1",
-    "pg": "^8.13.1",
-    "tronweb": "^6.0.0"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

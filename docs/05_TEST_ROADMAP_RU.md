@@ -29,8 +29,7 @@
 - [ ] **Telegram**: есть `BOT_TOKEN` (BotFather) — без него бот не стартует.
 - [ ] **Telegram**: есть `ADMIN_TELEGRAM_ID` (ваш user id) — для админ-алертов.
 - [ ] **Ethereum**: есть рабочий `ETH_RPC_URL` с адекватными лимитами на `eth_getLogs`.
-- [ ] **TRON**: есть `TRONGRID_API_KEY`.
-- [ ] **TRON**: есть `TRON_MNEMONIC` (HD кошелёк).
+- [ ] **Payments**: есть `NOWPAYMENTS_API_KEY` (аккаунт NOWPayments → API key).
 
 ### 0.2 Конфиги (делаю я)
 - [ ] `.env` заполнен и **не коммитится**.
@@ -45,7 +44,7 @@
 ## 1) Infra smoke (Docker / Postgres / миграции)
 
 - [x] `docker compose up -d db` поднимает Postgres без ошибок. — 2025-12-19: OK
-- [x] Миграции проходят на чистой БД (созданы таблицы, включая `token_metadata`, `tron_hd_state`). — 2025-12-19: OK (`node dist/db/migrate.js`)
+- [x] Миграции проходят на чистой БД (созданы таблицы, включая `token_metadata`). — 2025-12-19: OK (`node dist/db/migrate.js`)
 - [x] Полный стек поднимается: `docker compose up -d --build` и все сервисы в `docker compose ps` = running. — 2025-12-19: OK
 - [~] Логи без фаталов:
   - `docker compose logs -f bot`
@@ -75,24 +74,24 @@
 
 ---
 
-## 4) Orders & TRON pay-address (HD)
+## 4) Orders & Payment invoice (NOWPayments)
 
-- [ ] Создание заказа в боте: статус `PENDING_PAYMENT`, выводится TRON-адрес.
-- [ ] 2–3 заказа подряд → адреса **разные**, `hd_index` растёт.
+- [ ] Создание заказа в боте: статус `PENDING_PAYMENT`, выводится адрес/сумма от NOWPayments.
+- [ ] 2–3 заказа подряд → `provider_payment_id` разные, адреса/инвойсы разные.
 - [ ] Кнопка “Проверить оплату” показывает реальный статус из БД (без “магии”).
 
 ---
 
-## 5) Payments worker (TronGrid / идемпотентность / EXPIRED)
+## 5) Payments worker (NOWPayments / идемпотентность / EXPIRED)
 
 ### 5.1 Без реальной оплаты (делаю я)
 - [ ] Worker стабильно тикает (каждые ~15с), не падает при пустых данных.
 - [ ] Заказ истекает через 60 минут: `PENDING_PAYMENT/CREATED` → `EXPIRED`.
 
 ### 5.2 С реальной оплатой (нужны ваши действия)
-- [ ] Вы делаете **тестовую оплату USDT TRC20** на адрес заказа (сумма тарифа).
-- [ ] Payments worker находит входящий Transfer и переводит заказ в `PAID`.
-- [ ] Идемпотентность: один `tx_hash` не “прилипает” к двум заказам; повторная обработка не ломает доставку.
+- [ ] Вы делаете тестовую оплату по реквизитам от NOWPayments (сумма тарифа).
+- [ ] Payments worker видит статус `confirmed/finished` и переводит заказ в `PAID`.
+- [ ] Идемпотентность: один `provider_payment_id` не “прилипает” к двум заказам; повторная обработка не ломает доставку.
 
 ### 5.3 Оплата после EXPIRED (совместно, по желанию)
 - [ ] Заказ был `EXPIRED`, потом пришла оплата → всё равно становится `PAID` и отчёт доставляется (MVP правило).
@@ -136,7 +135,7 @@
 ## 9) Security & compliance (обязательное)
 
 - [ ] Бот нигде не просит seed/private key/подпись.
-- [ ] Логи не содержат секреты: `TRON_MNEMONIC`, `BOT_TOKEN`, `TRONGRID_API_KEY`.
+- [ ] Логи не содержат секреты: `NOWPAYMENTS_API_KEY`, `BOT_TOKEN`.
 - [ ] `.env` не попадает в git/артефакты.
 
 ---
@@ -182,7 +181,7 @@
   - При этом прилетел admin alert от reports-worker из-за `pg_filenode.map: Permission denied` (Postgres bind-mount).
   - Фиксы: Postgres переведён на named volume, zero-address заблокирован; нужен повторный прогон на реальном адресе.
 
-### 2025-12-19 — E2E: оплата 3 USDT TRC20 + доставка отчёта (с ретраями Infura)
+### 2025-12-19 — E2E: оплата 3 USDT (NOWPayments) + доставка отчёта (с ретраями Infura)
 - **Скоуп**: payments / reports
 - **Результат**: PASS *(после фикса троттлинга/ретраев)*
 - **Заметки**:

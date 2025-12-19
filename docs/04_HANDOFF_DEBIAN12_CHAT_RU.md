@@ -10,7 +10,7 @@
 Wallet Guard — Telegram-бот + воркеры, которые:
 - принимают **публичный ETH адрес** (read-only),
 - делают **free preview** approvals,
-- продают платный отчёт (Lite/Pro/Max) за **USDT TRC20** (уникальный TRON-адрес на заказ),
+- продают платный отчёт (Lite/Pro/Max) за крипто через **платёжный агрегатор (NOWPayments)**,
 - автоматически детектят оплату и доставляют отчёт (CSV/HTML/PDF),
 - для Max включают мониторинг на 30 дней (daily alerts при новых spenders/unlimited approvals).
 
@@ -21,11 +21,11 @@ Wallet Guard — Telegram-бот + воркеры, которые:
 ### 1.1 Компоненты
 - **Telegram bot**: `src/bot/bot.ts`
   - /start, “Проверить кошелёк”, free preview (реальный), выбор тарифа
-  - создание заказа в Postgres, генерация TRON pay-address (HD)
+  - создание заказа в Postgres, создание инвойса через NOWPayments API
   - кнопки в отчёте: HIGH / revoke links / скачать CSV
 - **payments-worker**: `src/workers/paymentsWorker.ts`
   - каждые 15с проверяет `PENDING_PAYMENT` и `EXPIRED`
-  - ищет USDT TRC20 входящие через TronGrid и ставит `PAID`
+  - опрашивает NOWPayments по `provider_payment_id` и ставит `PAID`
   - авто `EXPIRED` через 60 минут
 - **reports-worker**: `src/workers/reportsWorker.ts`
   - `PAID → REPORTING → генерировать отчёт → сохранить → отправить → DELIVERED`
@@ -42,7 +42,7 @@ Wallet Guard — Telegram-бот + воркеры, которые:
 ### 1.2 БД и миграции
 - Миграции: `src/db/migrations/*.sql`
 - Мигратор: `src/db/migrate.ts` (multi-migrations + `schema_migrations`)
-- Таблицы: `users`, `orders`, `reports`, `monitoring_subscriptions`, `token_metadata`, `tron_hd_state`
+- Таблицы: `users`, `orders`, `reports`, `monitoring_subscriptions`, `token_metadata`
 
 ### 1.3 Docker / Debian
 - `docker-compose.yml` — db + bot + payments-worker + reports-worker + monitoring-worker
@@ -80,12 +80,11 @@ Wallet Guard — Telegram-бот + воркеры, которые:
   - узнать `ADMIN_TELEGRAM_ID` (ваш telegram user id)
 - **Ethereum**:
   - дать рабочий `ETH_RPC_URL` (с нормальными лимитами на `eth_getLogs`)
-- **TRON**:
-  - дать `TRONGRID_API_KEY`
-  - дать `TRON_MNEMONIC` (HD wallet)
-  - выполнить **тестовую оплату USDT TRC20** на выданный адрес (если хотим проверить полный paid-flow)
-    - ассистент подскажет точную сумму/адрес, вы отправите транзакцию
-    - затем совместно проверим, что заказ перешёл в `PAID` и отчёт доставлен
+- **Платёжный агрегатор (NOWPayments)**:
+  - зарегистрировать аккаунт NOWPayments
+  - настроить payout wallet (куда выводить средства)
+  - сгенерировать `NOWPAYMENTS_API_KEY` и передать ассистенту
+  - выполнить тестовую оплату по инвойсу/адресу, который выдаст бот
 
 ---
 
@@ -100,8 +99,7 @@ Wallet Guard — Telegram-бот + воркеры, которые:
   - `ADMIN_TELEGRAM_ID`
   - `DATABASE_URL=postgresql://walletguard:walletguard@db:5432/walletguard`
   - `ETH_RPC_URL`
-  - `TRON_MNEMONIC`
-  - `TRONGRID_API_KEY`
+  - `NOWPAYMENTS_API_KEY`
   - `REPORTS_STORAGE_PATH=/data/reports`
   - (опционально) `ETH_APPROVALS_*` параметры
 - `docker compose up -d --build`
@@ -113,8 +111,8 @@ Wallet Guard — Telegram-бот + воркеры, которые:
 
 ### 4.2 Что проверяем сразу после деплоя
 - `bot` отвечает на `/start`
-- создаётся заказ, выдаётся TRON address
-- payments-worker не падает, polls TronGrid
+- создаётся заказ, бот выдаёт адрес/сумму от NOWPayments
+- payments-worker не падает, polls NOWPayments API
 - reports-worker запускается (и умеет рендерить PDF — важно для MAX)
 - monitoring-worker запускается и делает initial tick
 - admin alerts приходят, если искусственно вызвать ошибку (по желанию)
@@ -132,8 +130,8 @@ Wallet Guard — Telegram-бот + воркеры, которые:
 - Проверка кнопок отчёта: HIGH / revoke links / скачать CSV
 
 ### 5.2 С вами (нужны действия с кошельком/оплатой)
-- Реальная оплата USDT TRC20 на адрес заказа:
-  - вы отправляете транзакцию (сеть TRON, USDT TRC20)
+- Реальная оплата по реквизитам NOWPayments:
+  - вы оплачиваете инвойс/адрес, который выдаст бот
   - ассистент мониторит логи payments-worker → статус заказа становится `PAID`
   - reports-worker доставляет отчёт
 
@@ -157,6 +155,6 @@ Wallet Guard — Telegram-бот + воркеры, которые:
 
 Скопируйте и отправьте в новый чат:
 
-“Прочитай `docs/04_HANDOFF_DEBIAN12_CHAT_RU.md`, затем следуй ему: сначала деплой на Debian 12 по `docs/03_DEBIAN12_SETUP.md`, потом пройди тестирование по `docs/02_TEST_PLAN_RU.md`. В процессе говори, что ты делаешь сам, а где нужны мои действия (BotFather/ключи/оплата USDT TRC20).”
+“Прочитай `docs/04_HANDOFF_DEBIAN12_CHAT_RU.md`, затем следуй ему: сначала деплой на Debian 12 по `docs/03_DEBIAN12_SETUP.md`, потом пройди тестирование по `docs/05_TEST_ROADMAP_RU.md`. В процессе говори, что ты делаешь сам, а где нужны мои действия (BotFather/ключи/NOWPayments/тестовая оплата).”
 
 

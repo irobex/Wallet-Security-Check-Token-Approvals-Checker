@@ -6,21 +6,58 @@ export async function createOrder(args: {
   walletAddress: string;
   plan: Plan;
   priceUsdt: string; // "9.00"
-  payAddress: string;
-  hdIndex: number;
   status?: OrderStatus;
 }): Promise<OrderRow> {
-  const status = args.status ?? "PENDING_PAYMENT";
+  const status = args.status ?? "CREATED";
 
   const q = await pool.query<OrderRow>(
     `
-    INSERT INTO orders (user_id, wallet_address, plan, price_usdt, status, pay_address, hd_index)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    INSERT INTO orders (user_id, wallet_address, plan, price_usdt, status)
+    VALUES ($1,$2,$3,$4,$5)
     RETURNING *
     `,
-    [args.userId, args.walletAddress, args.plan, args.priceUsdt, status, args.payAddress, args.hdIndex]
+    [args.userId, args.walletAddress, args.plan, args.priceUsdt, status]
   );
   return q.rows[0]!;
+}
+
+export async function setOrderPaymentRequest(args: {
+  orderId: string;
+  provider: string; // "nowpayments"
+  providerPaymentId: string;
+  providerStatus: string | null;
+  payAddress: string;
+  payAmount: string;
+  payCurrency: string;
+  invoiceUrl: string | null;
+}): Promise<OrderRow> {
+  const q = await pool.query<OrderRow>(
+    `
+    UPDATE orders
+    SET status = 'PENDING_PAYMENT',
+        payment_provider = $2,
+        provider_payment_id = $3,
+        provider_status = $4,
+        pay_address = $5,
+        pay_amount = $6,
+        pay_currency = $7,
+        invoice_url = $8
+    WHERE id = $1
+    RETURNING *
+    `,
+    [
+      args.orderId,
+      args.provider,
+      args.providerPaymentId,
+      args.providerStatus,
+      args.payAddress,
+      args.payAmount,
+      args.payCurrency,
+      args.invoiceUrl
+    ]
+  );
+  if (!q.rows[0]) throw new Error("Order not found");
+  return q.rows[0];
 }
 
 export async function getOrdersByStatus(status: OrderStatus, limit = 100): Promise<OrderRow[]> {
@@ -41,31 +78,35 @@ export async function getOrdersByStatuses(statuses: OrderStatus[], limit = 200):
 
 export async function markOrderPaid(args: {
   orderId: string;
-  txHash: string;
-  paidAmount: string; // "25.000000"
+  providerPaymentId: string;
+  providerStatus: string | null;
+  txHash: string | null;
+  paidAmount: string; // e.g. "3.000000"
 }): Promise<OrderRow> {
-  // Prevent a single tx from being assigned to multiple orders.
+  // Prevent a single provider payment id from being assigned to multiple orders.
   const existing = await pool.query<{ id: string }>(
-    "SELECT id FROM orders WHERE tx_hash = $1 LIMIT 1",
-    [args.txHash]
+    "SELECT id FROM orders WHERE provider_payment_id = $1 LIMIT 1",
+    [args.providerPaymentId]
   );
   if (existing.rows[0] && existing.rows[0].id !== args.orderId) {
-    throw new Error(`tx_hash already used by another order: ${args.txHash}`);
+    throw new Error(`provider_payment_id already used by another order: ${args.providerPaymentId}`);
   }
 
   const q = await pool.query<OrderRow>(
     `
     UPDATE orders
     SET status = 'PAID',
-        tx_hash = $2,
-        paid_amount = $3,
+        provider_payment_id = $2,
+        provider_status = $3,
+        tx_hash = COALESCE($4, tx_hash),
+        paid_amount = $5,
         paid_at = now()
-    WHERE id = $1 AND (tx_hash IS NULL OR tx_hash = $2)
+    WHERE id = $1 AND (provider_payment_id IS NULL OR provider_payment_id = $2)
     RETURNING *
     `,
-    [args.orderId, args.txHash, args.paidAmount]
+    [args.orderId, args.providerPaymentId, args.providerStatus, args.txHash, args.paidAmount]
   );
-  if (!q.rows[0]) throw new Error("Order not found or already paid with different tx_hash");
+  if (!q.rows[0]) throw new Error("Order not found or already paid with different provider_payment_id");
   return q.rows[0];
 }
 

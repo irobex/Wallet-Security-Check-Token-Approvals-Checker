@@ -10,13 +10,11 @@ import type { UserSession } from "./state.js";
 import type { Plan } from "../db/types.js";
 import { formatPlanPrice, paymentInlineKeyboard } from "./ui/keyboards.js";
 import { usersRepo, ordersRepo, reportsRepo } from "../db/index.js";
-import { allocateNextTronHdIndex, deriveTronAddressFromMnemonic } from "../payments/tron/hd.js";
 import { getOrderById } from "../db/repos/ordersRepo.js";
 import type { ApprovalsReport } from "../reports/types.js";
 import { InputFile } from "grammy";
 import { notifyAdmin } from "../core/adminAlerts.js";
-import { fetchTrc20TransactionsForAccount } from "../payments/tron/trongrid.js";
-import { TRON_USDT_CONTRACT } from "../payments/tron/usdt_trc20.js";
+import { NowPaymentsClient } from "../payments/nowpayments/client.js";
 
 const token = config.botToken;
 if (!token) {
@@ -59,17 +57,15 @@ bot.callbackQuery(/^plan:(LITE|PRO|MAX)$/, async (ctx) => {
   const telegramId = ctx.from?.id;
   if (!telegramId) return;
 
-  if (!config.tronMnemonic) {
+  if (!config.nowpaymentsApiKey) {
     await ctx.answerCallbackQuery();
-    await ctx.reply("Ошибка конфигурации: TRON_MNEMONIC не задан. Админ: проверьте .env.");
+    await ctx.reply("Ошибка конфигурации: NOWPAYMENTS_API_KEY не задан. Админ: проверьте .env.");
     return;
   }
 
   await ctx.answerCallbackQuery();
 
   const user = await usersRepo.getOrCreateUserByTelegramId(telegramId);
-  const hdIndex = await allocateNextTronHdIndex();
-  const payAddress = deriveTronAddressFromMnemonic(config.tronMnemonic, hdIndex);
   const price = formatPlanPrice(plan);
 
   const order = await ordersRepo.createOrder({
@@ -77,38 +73,50 @@ bot.callbackQuery(/^plan:(LITE|PRO|MAX)$/, async (ctx) => {
     walletAddress,
     plan,
     priceUsdt: price,
-    payAddress,
-    hdIndex,
-    status: "PENDING_PAYMENT"
+    status: "CREATED"
   });
   session.lastOrderId = order.id;
 
-  // TronGrid preflight: helps avoid "send money and then discover monitoring is broken".
-  // If it fails, we still show the address, but warn user/admin.
-  let tronGridOk = true;
   try {
-    await fetchTrc20TransactionsForAccount({
-      account: payAddress,
-      contractAddress: TRON_USDT_CONTRACT,
-      onlyConfirmed: true,
-      limit: 1
+    const np = new NowPaymentsClient({ apiKey: config.nowpaymentsApiKey, baseUrl: config.nowpaymentsBaseUrl });
+    const created = await np.createPayment({
+      price_amount: price,
+      price_currency: config.nowpaymentsPriceCurrency,
+      pay_currency: config.nowpaymentsPayCurrency,
+      order_id: order.id,
+      order_description: `Wallet Guard ${plan} report`
     });
+
+    const updated = await ordersRepo.setOrderPaymentRequest({
+      orderId: order.id,
+      provider: "nowpayments",
+      providerPaymentId: created.providerPaymentId,
+      providerStatus: created.paymentStatus,
+      payAddress: created.payAddress,
+      payAmount: created.payAmount,
+      payCurrency: created.payCurrency,
+      invoiceUrl: created.invoiceUrl
+    });
+
+    const invoiceLine = updated.invoice_url ? `\nСсылка на инвойс: ${updated.invoice_url}\n` : "";
+
+    await ctx.reply(
+      `Оплатите ${updated.pay_currency ?? config.nowpaymentsPayCurrency} на адрес:\n${updated.pay_address}\n\n` +
+        `Сумма: ${updated.pay_amount} ${updated.pay_currency ?? config.nowpaymentsPayCurrency}\n\n` +
+        "После оплаты отчёт придёт автоматически (обычно до 1–2 минут)." +
+        invoiceLine,
+      { reply_markup: paymentInlineKeyboard(order.id) }
+    );
+    return;
   } catch (e) {
-    tronGridOk = false;
     const msg = (e as Error)?.message ?? String(e);
-    logger.warn(`TronGrid preflight failed for order=${order.id} addr=${payAddress}: ${msg}`);
-    void notifyAdmin(`TronGrid preflight failed (order=${order.id}): ${msg}`);
+    logger.warn(`NOWPayments createPayment failed for order=${order.id}: ${msg}`);
+    void notifyAdmin(`NOWPayments createPayment failed (order=${order.id}): ${msg}`);
   }
 
-  const warnLine = tronGridOk
-    ? ""
-    : "\n⚠️ Внимание: сейчас есть проблема с доступом к TronGrid. Детект оплаты может быть задержан.\n";
-
   await ctx.reply(
-    `Оплатите USDT (TRC20) на адрес:\n${payAddress}\n\n` +
-      `Сумма: ${price} USDT\n\n` +
-      "После оплаты отчёт придёт автоматически (обычно до 1 минуты)." +
-      warnLine,
+    "Сейчас не удалось создать инвойс у платёжного провайдера. Попробуйте ещё раз через «💳 Тарифы».\n" +
+      "Админ получил уведомление.",
     { reply_markup: paymentInlineKeyboard(order.id) }
   );
 });
@@ -124,6 +132,7 @@ bot.callbackQuery(/^paycheck:(.+)$/, async (ctx) => {
 
   const lines = [
     `Статус заказа: ${order.status}`,
+    order.provider_status ? `Платёж: ${order.provider_status}` : "Платёж: —",
     order.tx_hash ? `TX: ${order.tx_hash}` : "TX: —",
     order.paid_amount ? `Оплачено: ${order.paid_amount} USDT` : "Оплачено: —"
   ];

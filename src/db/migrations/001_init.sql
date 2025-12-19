@@ -16,8 +16,13 @@ CREATE TABLE IF NOT EXISTS orders (
   plan VARCHAR(10) NOT NULL CHECK (plan IN ('LITE','PRO','MAX')),
   price_usdt NUMERIC(10,2) NOT NULL,
   status VARCHAR(20) NOT NULL CHECK (status IN ('CREATED','PENDING_PAYMENT','PAID','REPORTING','DELIVERED','EXPIRED','FAILED')),
-  pay_address VARCHAR(64) NOT NULL,
-  hd_index INTEGER NOT NULL,
+  payment_provider VARCHAR(32) NOT NULL DEFAULT 'nowpayments',
+  provider_payment_id TEXT,
+  provider_status TEXT,
+  pay_address VARCHAR(128),
+  pay_currency VARCHAR(32),
+  pay_amount NUMERIC(36, 18),
+  invoice_url TEXT,
   tx_hash VARCHAR(128),
   paid_amount NUMERIC(18,6),
   created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -28,6 +33,10 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS orders_status_idx ON orders(status);
 CREATE INDEX IF NOT EXISTS orders_pay_address_idx ON orders(pay_address);
 CREATE INDEX IF NOT EXISTS orders_user_created_at_idx ON orders(user_id, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS orders_provider_payment_id_uniq
+  ON orders(provider_payment_id)
+  WHERE provider_payment_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -51,14 +60,4 @@ CREATE TABLE IF NOT EXISTS monitoring_subscriptions (
   created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- Single-row table to allocate unique TRON HD indices atomically.
-CREATE TABLE IF NOT EXISTS tron_hd_state (
-  id INTEGER PRIMARY KEY,
-  next_index INTEGER NOT NULL
-);
-
-INSERT INTO tron_hd_state (id, next_index)
-VALUES (1, 0)
-ON CONFLICT (id) DO NOTHING;
-
-
+-- payments are handled by a payment aggregator (NOWPayments), so we no longer store TRON HD state here.
