@@ -44,4 +44,11 @@ export function deriveTronAddressFromMnemonic(mnemonic: string, index: number): 
   return addr;
 }
 
+export function deriveTronPrivateKeyHexFromMnemonic(mnemonic: string, index: number): string {
+  const path = tronDerivationPath(index);
+  const wallet = HDNodeWallet.fromPhrase(mnemonic, undefined, path);
+  // tronweb expects hex without 0x
+  return wallet.privateKey.startsWith("0x") ? wallet.privateKey.slice(2) : wallet.privateKey;
+}
+
 

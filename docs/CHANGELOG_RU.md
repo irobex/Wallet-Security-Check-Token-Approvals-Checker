@@ -25,6 +25,21 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 14:20  
+**Коротко**: Добавлена опциональная авто-консолидация USDT (sweep) — больше не нужно вручную докидывать TRX на каждый pay-address  
+**Детали**:
+- **Сделано**:
+  - добавлены env-переменные для авто-sweep: `TRON_SWEEP_ENABLED`, `TRON_SWEEP_TO_ADDRESS`, `TRON_TREASURY_HD_INDEX`, `TRON_SWEEP_TOPUP_TRX`
+  - `payments-worker` (опционально) после `PAID`:
+    - докидывает TRX на pay-address из treasury (если нужно)
+    - переводит USDT на `TRON_SWEEP_TO_ADDRESS`
+  - добавлены утилиты sweep и derivation приватного ключа из mnemonic
+- **Файлы**:
+  - `src/workers/paymentsWorker.ts`
+  - `src/payments/tron/sweep.ts`, `src/payments/tron/hd.ts`
+  - `src/core/config.ts`, `env.example`, `docs/03_DEBIAN12_SETUP.md`
+- **Причина/контекст**: TRC20 transfer требует TRX fee/energy; уникальные адреса на заказ нельзя “собирать” без TRX. Авто-sweep позволяет пополнять TRX только на одном treasury-адресе.
+
 **Дата/время**: 2025-12-19 14:00  
 **Коротко**: Доведён до DELIVERED уже оплаченный заказ (3 USDT) без повторной оплаты — Infura throttling/ретраи отработали  
 **Детали**:

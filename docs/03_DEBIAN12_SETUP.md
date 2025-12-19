@@ -128,6 +128,13 @@ ETH_RPC_URL=
 TRON_MNEMONIC=
 TRONGRID_API_KEY=
 
+# Optional: auto-sweep paid USDT from per-order address to a single treasury wallet.
+# You will still need to keep TRX on the treasury address for fees, but NOT on every per-order address manually.
+TRON_SWEEP_ENABLED=false
+TRON_SWEEP_TO_ADDRESS=
+TRON_TREASURY_HD_INDEX=0
+TRON_SWEEP_TOPUP_TRX=10
+
 # Ethereum approvals scan tuning (optional)
 ETH_APPROVALS_FROM_BLOCK=0
 ETH_APPROVALS_CHUNK_SIZE=5000

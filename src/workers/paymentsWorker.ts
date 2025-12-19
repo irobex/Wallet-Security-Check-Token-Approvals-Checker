@@ -2,6 +2,10 @@ import { logger } from "../core/logger.js";
 import { ordersRepo, pool } from "../db/index.js";
 import { findIncomingUsdtPayment } from "../payments/tron/monitor.js";
 import { notifyAdmin } from "../core/adminAlerts.js";
+import { config } from "../core/config.js";
+import { usdtToMicro } from "../payments/tron/usdt_trc20.js";
+import { deriveTronAddressFromMnemonic, deriveTronPrivateKeyHexFromMnemonic } from "../payments/tron/hd.js";
+import { sweepUsdtToTreasury } from "../payments/tron/sweep.js";
 
 logger.info("payments-worker started");
 
@@ -43,6 +47,37 @@ async function tick() {
         });
 
         logger.info(`Order PAID: ${order.id} tx=${match.txHash} amount=${match.paidAmountUsdt}`);
+
+        // Optional: auto-sweep USDT to treasury address so owner doesn't need to manually fund each address with TRX.
+        if (config.tronSweepEnabled) {
+          if (!config.tronMnemonic || !config.trongridApiKey) {
+            throw new Error("TRON_SWEEP_ENABLED but TRON_MNEMONIC/TRONGRID_API_KEY missing");
+          }
+          if (!config.tronSweepToAddress) {
+            throw new Error("TRON_SWEEP_ENABLED but TRON_SWEEP_TO_ADDRESS missing");
+          }
+
+          const treasuryIndex = Number.isFinite(config.tronTreasuryHdIndex) ? config.tronTreasuryHdIndex : 0;
+          const treasuryAddress = deriveTronAddressFromMnemonic(config.tronMnemonic, treasuryIndex);
+          const treasuryPriv = deriveTronPrivateKeyHexFromMnemonic(config.tronMnemonic, treasuryIndex);
+          const payPriv = deriveTronPrivateKeyHexFromMnemonic(config.tronMnemonic, order.hd_index);
+          const amountMicro = usdtToMicro(match.paidAmountUsdt);
+
+          logger.info(
+            `sweep: order=${order.id} pay=${order.pay_address} -> ${config.tronSweepToAddress} amount=${match.paidAmountUsdt} (treasury=${treasuryAddress})`
+          );
+          const res = await sweepUsdtToTreasury({
+            apiKey: config.trongridApiKey,
+            treasuryPrivateKey: treasuryPriv,
+            treasuryAddress,
+            payPrivateKey: payPriv,
+            payAddress: order.pay_address,
+            sweepToAddress: config.tronSweepToAddress,
+            amountMicro,
+            topupTrx: config.tronSweepTopupTrx
+          });
+          logger.info(`sweep: done order=${order.id} topupTx=${res.topupTx ?? "—"} sweepTx=${res.sweepTx}`);
+        }
       } catch (e) {
         logger.error(`payments-worker: failed processing order ${order.id}`, e);
         await notifyAdmin(`payments-worker error for order ${order.id}: ${(e as Error)?.message ?? String(e)}`);
