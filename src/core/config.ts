@@ -26,6 +26,15 @@ export const config = {
   tronTreasuryHdIndex: Number(getEnv("TRON_TREASURY_HD_INDEX", "0")),
   tronSweepTopupTrx: Number(getEnv("TRON_SWEEP_TOPUP_TRX", "10")), // how much TRX to send to pay address before sweeping USDT
 
+  // TRON resource delegation (freeze + delegate Energy/Bandwidth)
+  tronDelegationEnabled: getEnv("TRON_DELEGATION_ENABLED", "false") === "true",
+  tronDelegationFreezeTrx: Number(getEnv("TRON_DELEGATION_FREEZE_TRX", "0")),
+  tronDelegationDelegateEnergyTrx: Number(getEnv("TRON_DELEGATION_DELEGATE_ENERGY_TRX", "0")),
+  tronDelegationDelegateBandwidthTrx: Number(getEnv("TRON_DELEGATION_DELEGATE_BANDWIDTH_TRX", "0")),
+  tronDelegationUndelegateAfter: getEnv("TRON_DELEGATION_UNDELEGATE_AFTER", "true") === "true",
+  tronDelegationMinPayTrx: Number(getEnv("TRON_DELEGATION_MIN_PAY_TRX", "1")),
+
+
   ethApprovalsFromBlock: Number(getEnv("ETH_APPROVALS_FROM_BLOCK", "0")),
   // Safer defaults for RPC providers like Infura (reduce risk of OOM / eth_getLogs limits).
   ethApprovalsChunkSize: Number(getEnv("ETH_APPROVALS_CHUNK_SIZE", "5000")),

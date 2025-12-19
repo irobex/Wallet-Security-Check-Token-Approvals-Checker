@@ -202,3 +202,11 @@
   - Tx:
     - topup TRX: `7a06f3fb60bc117f0ede58e1308b93e80ab830b406650b2fdac0f679a7bc3dcf`
     - sweep USDT: `81359de0e59433856a8e5b853326f0e6040592a674acaa65e2637adeec7cee3e`
+
+### 2025-12-19 — TRON Energy freeze/delegation (проверка применимости)
+- **Скоуп**: payments
+- **Результат**: FAIL (экономически не подходит при малом бюджете freeze)
+- **Заметки**:
+  - Пробный `freezeBalanceV2` на treasury: 1 TRX frozen дал `EnergyLimit≈9` (по `TotalEnergyLimit/TotalEnergyWeight`).
+  - Для `USDT.transfer()` нужен порядок ~100k Energy → требуется freeze порядка 10k+ TRX.
+  - Решение: вместо freeze+delegation рассматриваем (а) аренду энергии у провайдеров, (б) смену модели платежей, чтобы убрать необходимость sweep.

@@ -485,3 +485,21 @@
   - `env.example`
 - **Заметки**:
   - Для прод-надёжности выставили `TRON_SWEEP_TOPUP_TRX=30` (в `.env`), чтобы у pay-адреса гарантированно было достаточно TRX для оплаты энергии.
+
+## 2025-12-19 — TRON Energy freeze/delegation: прототип + вывод по экономике
+
+- **Скоуп**: payments / TRON
+- **Сделано**:
+  - Добавлен прототип кода для TRON resource delegation (freezeBalanceV2 ENERGY + delegate/undelegate).
+  - Добавлены env переменные `TRON_DELEGATION_*` и обновлён `env.example`.
+  - Проведён пробный `freezeBalanceV2` на 1 TRX, подтверждено появление `EnergyLimit` в `getAccountResources`.
+- **Вывод / причина изменения плана**:
+  - По текущим параметрам сети TRON на mainnet 1 TRX frozen даёт примерно `TotalEnergyLimit/TotalEnergyWeight ≈ 9.4` Energy.
+  - `USDT.transfer()` потребляет порядка ~100k Energy, поэтому для покрытия одной транзакции “на энергии” нужно морозить порядка 10k+ TRX.
+  - Следовательно, freeze+delegation с бюджетом 100–200 TRX экономически не решает проблему комиссий; для снижения затрат нужны альтернативы: аренда энергии (delegation-as-a-service) или смена модели платежей (например один адрес + уникальная сумма).
+- **Файлы**:
+  - `src/payments/tron/delegation.ts`
+  - `src/payments/tron/sweep.ts`
+  - `src/core/config.ts`
+  - `src/workers/paymentsWorker.ts`
+  - `env.example`

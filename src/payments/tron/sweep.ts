@@ -1,11 +1,11 @@
 import * as TW from "tronweb";
 import { TRON_USDT_CONTRACT } from "./usdt_trc20.js";
 import { logger } from "../../core/logger.js";
+import { delegateResourceTo, ensureTreasuryFrozenForEnergy, undelegateResourceFrom } from "./delegation.js";
 
 const TronWeb = TW.TronWeb;
 
-const USDT_FEE_LIMIT_PRIMARY_SUN = 120_000_000; // 120 TRX max burn
-const USDT_FEE_LIMIT_RETRY_SUN = 200_000_000; // 200 TRX max burn (fallback)
+const USDT_FEE_LIMIT_SUN = 30_000_000; // 30 TRX max burn (acts as safety cap)
 
 function sleep(ms: number): Promise<void> {
   return new Promise((res) => setTimeout(res, ms));
@@ -75,7 +75,6 @@ export async function sendTrx(args: {
   const tx = await tronWeb.trx.sendTransaction(args.toAddress, Math.floor(args.amountTrx * 1e6));
   const txid = tx?.txid ?? tx?.transaction?.txID ?? "";
   if (!txid) throw new Error(`TRX send failed: ${JSON.stringify(tx).slice(0, 500)}`);
-  // Best-effort confirmation
   const info = await waitForTxFinalization({ tronWeb, txid }).catch(() => undefined);
   if (info) assertTxSuccess(info, txid);
   return txid;
@@ -95,18 +94,38 @@ export async function sendUsdtTrc20(args: {
 
   const txid = await c
     .transfer(args.toAddress, args.amountMicro.toString())
-    .send({ feeLimit: args.feeLimitSun ?? USDT_FEE_LIMIT_PRIMARY_SUN }); // sun
+    .send({ feeLimit: args.feeLimitSun ?? USDT_FEE_LIMIT_SUN });
 
   if (!txid) throw new Error("USDT transfer failed: empty txid");
 
   const info = await waitForTxFinalization({ tronWeb, txid: String(txid) });
   assertTxSuccess(info, String(txid));
+
+  // Helpful economics logging
+  const feeSun = Number(info?.fee ?? 0);
+  const energyFeeSun = Number(info?.receipt?.energy_fee ?? 0);
+  const netFeeSun = Number(info?.receipt?.net_fee ?? 0);
+  logger.info(
+    `sweep: USDT tx=${String(txid)} fee=${(feeSun / 1e6).toFixed(6)} TRX (energy=${(energyFeeSun / 1e6).toFixed(6)}, net=${(
+      netFeeSun / 1e6
+    ).toFixed(6)})`
+  );
+
   return String(txid);
 }
 
+export type TronDelegationConfig = {
+  enabled: boolean;
+  freezeTrx: number;
+  delegateEnergyTrx: number;
+  delegateBandwidthTrx: number;
+  undelegateAfter: boolean;
+  minPayTrx: number;
+};
+
 /**
- * Funds a pay address with TRX (fee) and sweeps USDT to treasury.
- * This avoids manual TRX topups per order.
+ * Funds a pay address with TRX (net/bandwidth) and sweeps USDT to treasury.
+ * Optionally uses TRON resource delegation (freeze+delegate ENERGY) to reduce TRX burn.
  */
 export async function sweepUsdtToTreasury(args: {
   apiKey: string;
@@ -116,10 +135,19 @@ export async function sweepUsdtToTreasury(args: {
   payAddress: string;
   sweepToAddress: string;
   amountMicro: bigint;
-  /** target TRX balance to keep on pay address before attempting sweep */
+  /** fallback target TRX balance to keep on pay address before sweeping (when delegation is disabled) */
   topupTrx: number;
-}): Promise<{ topupTxs?: string[]; sweepTx: string }> {
+  delegation?: TronDelegationConfig;
+}): Promise<{
+  topupTxs?: string[];
+  freezeTx?: string;
+  delegateTxs?: string[];
+  undelegateTxs?: string[];
+  sweepTx: string;
+}> {
   const topupTxs: string[] = [];
+  const delegateTxs: string[] = [];
+  const undelegateTxs: string[] = [];
 
   async function ensurePayHasTrx(targetTrx: number): Promise<void> {
     const payTrxSun = await getTrxBalanceSun({ apiKey: args.apiKey, address: args.payAddress });
@@ -141,31 +169,88 @@ export async function sweepUsdtToTreasury(args: {
     await sleep(5_000);
   }
 
-  const attempt = async (feeLimitSun: number): Promise<string> => {
-    return await sendUsdtTrc20({
+  const delegation = args.delegation;
+  const useDelegation = Boolean(delegation?.enabled);
+
+  // With delegation enabled, pay address only needs a tiny TRX balance for net fee/bandwidth.
+  // Without delegation, we keep a larger TRX balance to cover energy burn.
+  await ensurePayHasTrx(useDelegation ? Math.max(0, delegation!.minPayTrx) : args.topupTrx);
+
+  let freezeTx: string | undefined;
+
+  if (useDelegation) {
+    freezeTx = (await ensureTreasuryFrozenForEnergy({
+      apiKey: args.apiKey,
+      treasuryAddress: args.treasuryAddress,
+      treasuryPrivateKey: args.treasuryPrivateKey,
+      freezeTrx: delegation!.freezeTrx
+    })) ?? undefined;
+
+    const d1 = await delegateResourceTo({
+      apiKey: args.apiKey,
+      treasuryAddress: args.treasuryAddress,
+      treasuryPrivateKey: args.treasuryPrivateKey,
+      receiverAddress: args.payAddress,
+      resource: "ENERGY",
+      delegateTrx: delegation!.delegateEnergyTrx
+    });
+    if (d1) delegateTxs.push(d1);
+
+    const d2 = await delegateResourceTo({
+      apiKey: args.apiKey,
+      treasuryAddress: args.treasuryAddress,
+      treasuryPrivateKey: args.treasuryPrivateKey,
+      receiverAddress: args.payAddress,
+      resource: "BANDWIDTH",
+      delegateTrx: delegation!.delegateBandwidthTrx
+    });
+    if (d2) delegateTxs.push(d2);
+  }
+
+  let sweepTx: string;
+  try {
+    sweepTx = await sendUsdtTrc20({
       apiKey: args.apiKey,
       fromPrivateKey: args.payPrivateKey,
       fromAddress: args.payAddress,
       toAddress: args.sweepToAddress,
       amountMicro: args.amountMicro,
-      feeLimitSun
+      feeLimitSun: USDT_FEE_LIMIT_SUN
     });
-  };
+  } finally {
+    if (useDelegation && delegation!.undelegateAfter) {
+      const u1 = await undelegateResourceFrom({
+        apiKey: args.apiKey,
+        treasuryAddress: args.treasuryAddress,
+        treasuryPrivateKey: args.treasuryPrivateKey,
+        receiverAddress: args.payAddress,
+        resource: "ENERGY",
+        delegateTrx: delegation!.delegateEnergyTrx
+      }).catch((e) => {
+        logger.warn(`delegation: failed to undelegate ENERGY (best-effort): ${(e as Error)?.message ?? String(e)}`);
+        return null;
+      });
+      if (u1) undelegateTxs.push(u1);
 
-  await ensurePayHasTrx(args.topupTrx);
-
-  try {
-    const sweepTx = await attempt(USDT_FEE_LIMIT_PRIMARY_SUN);
-    return topupTxs.length ? { topupTxs, sweepTx } : { sweepTx };
-  } catch (e) {
-    const msg = (e as Error)?.message ?? String(e);
-    if (msg.includes("OUT_OF_ENERGY")) {
-      logger.warn(`sweep: OUT_OF_ENERGY, retrying with more TRX + higher feeLimit. err=${msg}`);
-      // Ensure significantly more TRX and retry once
-      await ensurePayHasTrx(Math.max(args.topupTrx * 3, args.topupTrx + 30));
-      const sweepTx = await attempt(USDT_FEE_LIMIT_RETRY_SUN);
-      return topupTxs.length ? { topupTxs, sweepTx } : { sweepTx };
+      const u2 = await undelegateResourceFrom({
+        apiKey: args.apiKey,
+        treasuryAddress: args.treasuryAddress,
+        treasuryPrivateKey: args.treasuryPrivateKey,
+        receiverAddress: args.payAddress,
+        resource: "BANDWIDTH",
+        delegateTrx: delegation!.delegateBandwidthTrx
+      }).catch((e) => {
+        logger.warn(`delegation: failed to undelegate BANDWIDTH (best-effort): ${(e as Error)?.message ?? String(e)}`);
+        return null;
+      });
+      if (u2) undelegateTxs.push(u2);
     }
-    throw e;
   }
+
+  const res: any = { sweepTx };
+  if (topupTxs.length) res.topupTxs = topupTxs;
+  if (freezeTx) res.freezeTx = freezeTx;
+  if (delegateTxs.length) res.delegateTxs = delegateTxs;
+  if (undelegateTxs.length) res.undelegateTxs = undelegateTxs;
+  return res;
 }

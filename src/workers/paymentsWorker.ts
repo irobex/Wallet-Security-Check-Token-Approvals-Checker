@@ -66,6 +66,7 @@ async function tick() {
           logger.info(
             `sweep: order=${order.id} pay=${order.pay_address} -> ${config.tronSweepToAddress} amount=${match.paidAmountUsdt} (treasury=${treasuryAddress})`
           );
+
           const res = await sweepUsdtToTreasury({
             apiKey: config.trongridApiKey,
             treasuryPrivateKey: treasuryPriv,
@@ -74,9 +75,22 @@ async function tick() {
             payAddress: order.pay_address,
             sweepToAddress: config.tronSweepToAddress,
             amountMicro,
-            topupTrx: config.tronSweepTopupTrx
+            topupTrx: config.tronSweepTopupTrx,
+            delegation: {
+              enabled: config.tronDelegationEnabled,
+              freezeTrx: config.tronDelegationFreezeTrx,
+              delegateEnergyTrx: config.tronDelegationDelegateEnergyTrx,
+              delegateBandwidthTrx: config.tronDelegationDelegateBandwidthTrx,
+              undelegateAfter: config.tronDelegationUndelegateAfter,
+              minPayTrx: config.tronDelegationMinPayTrx
+            }
           });
-          logger.info(`sweep: done order=${order.id} topupTxs=${(res.topupTxs && res.topupTxs.length) ? res.topupTxs.join(",") : "—"} sweepTx=${res.sweepTx}`);
+
+          logger.info(
+            `sweep: done order=${order.id} topupTxs=${res.topupTxs?.join(",") ?? "—"} freezeTx=${res.freezeTx ?? "—"} delegateTxs=${
+              res.delegateTxs?.join(",") ?? "—"
+            } undelegateTxs=${res.undelegateTxs?.join(",") ?? "—"} sweepTx=${res.sweepTx}`
+          );
         }
       } catch (e) {
         logger.error(`payments-worker: failed processing order ${order.id}`, e);
@@ -97,5 +111,3 @@ process.on("SIGINT", async () => {
   await pool.end().catch(() => undefined);
   process.exit(0);
 });
-
-
