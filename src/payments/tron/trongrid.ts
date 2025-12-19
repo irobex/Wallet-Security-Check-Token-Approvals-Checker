@@ -1,6 +1,6 @@
 import { config } from "../../core/config.js";
 
-type TronGridTrc20Tx = {
+export type TronGridTrc20Tx = {
   transaction_id: string;
   token_info?: {
     address?: string;

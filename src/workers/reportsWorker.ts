@@ -18,6 +18,11 @@ logger.info("reports-worker started");
 
 const bot = getTelegramBot();
 
+function isRateLimitError(e: unknown): boolean {
+  const msg = (e as any)?.shortMessage ?? (e as any)?.message ?? String(e);
+  return /Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005;
+}
+
 function reportDir(orderId: string): string {
   // Store by order id (safe)
   return `${config.reportsStoragePath}/orders/${orderId}`;
@@ -129,7 +134,14 @@ async function tick() {
     logger.error("reports-worker tick failed", e);
     await notifyAdmin(`reports-worker tick failed: ${(e as Error)?.message ?? String(e)}`);
     if (currentOrderId) {
-      await ordersRepo.markOrderFailed(currentOrderId).catch(() => undefined);
+      // For transient RPC throttling (Infura), do NOT fail the order permanently.
+      // Put it back to PAID so it can be retried on the next tick.
+      if (isRateLimitError(e)) {
+        await ordersRepo.updateOrderStatus(currentOrderId, "PAID").catch(() => undefined);
+        await notifyAdmin(`reports-worker: order ${currentOrderId} returned to PAID (will retry) due to RPC rate limit`);
+      } else {
+        await ordersRepo.markOrderFailed(currentOrderId).catch(() => undefined);
+      }
     }
   } finally {
     running = false;

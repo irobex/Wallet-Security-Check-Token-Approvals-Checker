@@ -1,4 +1,4 @@
-import { fetchTrc20TransactionsForAccount } from "./trongrid.js";
+import { fetchTrc20TransactionsForAccount, type TronGridTrc20Tx } from "./trongrid.js";
 import { TRON_USDT_CONTRACT, usdtToMicro } from "./usdt_trc20.js";
 import { logger } from "../../core/logger.js";
 
@@ -10,6 +10,30 @@ export type IncomingPaymentMatch = {
 
 function safeLower(s: string | undefined): string {
   return (s ?? "").toLowerCase();
+}
+
+function toUsdtStringFromMicro(micro: bigint): string {
+  const sign = micro < 0n ? "-" : "";
+  const v = micro < 0n ? -micro : micro;
+  const intPart = v / 1_000_000n;
+  const fracPart = v % 1_000_000n;
+  return `${sign}${intPart.toString()}.${fracPart.toString().padStart(6, "0")}`;
+}
+
+function tronValueToMicro(tx: TronGridTrc20Tx): bigint | null {
+  const value = tx.value?.trim();
+  if (!value) return null;
+
+  // TronGrid for TRC20 often returns integer minimal-units (e.g. "3000000" for 3 USDT).
+  if (/^\d+$/.test(value)) return BigInt(value);
+
+  // Some providers may return decimal string in token units.
+  // For USDT TRC20 we assume 6 decimals.
+  try {
+    return usdtToMicro(value);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -34,13 +58,12 @@ export async function findIncomingUsdtPayment(args: {
     let bestValue = "";
     let bestTx = "";
     for (const tx of incomingToAddr) {
-      const value = tx.value;
-      if (!value) continue;
       try {
-        const micro = usdtToMicro(value);
+        const micro = tronValueToMicro(tx);
+        if (micro === null) continue;
         if (micro > bestMicro) {
           bestMicro = micro;
-          bestValue = value;
+          bestValue = toUsdtStringFromMicro(micro);
           bestTx = tx.transaction_id ?? "";
         }
       } catch {
@@ -59,24 +82,15 @@ export async function findIncomingUsdtPayment(args: {
   for (const tx of txs) {
     if (safeLower(tx.to) !== safeLower(args.payAddress)) continue;
 
-    // TronGrid returns "value" as decimal string in token units.
-    // Example: "25" or "25.000001"
-    const value = tx.value;
-    if (!value) continue;
-
-    let micro: bigint;
-    try {
-      micro = usdtToMicro(value);
-    } catch {
-      continue;
-    }
+    const micro = tronValueToMicro(tx);
+    if (micro === null) continue;
 
     if (micro < expectedMicro) continue;
     if (!tx.transaction_id) continue;
 
     return {
       txHash: tx.transaction_id,
-      paidAmountUsdt: value,
+      paidAmountUsdt: toUsdtStringFromMicro(micro),
       paidAmountMicro: micro
     };
   }

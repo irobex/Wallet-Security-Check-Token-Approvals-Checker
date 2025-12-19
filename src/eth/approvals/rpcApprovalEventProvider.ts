@@ -10,6 +10,15 @@ if (!approvalEvent) {
 }
 const APPROVAL_TOPIC = approvalEvent.topicHash;
 
+function isRateLimitError(e: unknown): boolean {
+  const msg = (e as any)?.shortMessage ?? (e as any)?.message ?? String(e);
+  return /Too Many Requests/i.test(msg) || /rate limit/i.test(msg) || (e as any)?.code === -32005;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
 function topicOfAddress(addr: string): string {
   // 32-byte topic: left-padded address
   const a = addr.toLowerCase().replace(/^0x/, "");
@@ -33,17 +42,27 @@ export class RpcApprovalEventProvider implements ApprovalEventProvider {
       logger.info(`eth_getLogs Approval(owner) blocks ${start}..${end}`);
 
       let logs: any[];
-      try {
-        logs = await provider.getLogs({
-          fromBlock: start,
-          toBlock: end,
-          topics: [APPROVAL_TOPIC, ownerTopic]
-        });
-      } catch (e) {
-        const msg = (e as Error)?.message ?? String(e);
-        logger.error(`eth_getLogs failed for blocks ${start}..${end}: ${msg}`);
-        throw e;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          logs = await provider.getLogs({
+            fromBlock: start,
+            toBlock: end,
+            topics: [APPROVAL_TOPIC, ownerTopic]
+          });
+          break;
+        } catch (e) {
+          const msg = (e as any)?.shortMessage ?? (e as Error)?.message ?? String(e);
+          logger.error(`eth_getLogs failed for blocks ${start}..${end} (attempt ${attempt + 1}): ${msg}`);
+          if (isRateLimitError(e) && attempt < 6) {
+            await sleep(1500 * (attempt + 1));
+            continue;
+          }
+          throw e;
+        }
       }
+
+      // Throttle even on success to avoid hitting provider RPS limits.
+      await sleep(250);
 
       for (const log of logs) {
         const parsed = ERC20_IFACE.parseLog({ topics: log.topics as string[], data: log.data });
