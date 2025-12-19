@@ -25,6 +25,15 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 11:40  
+**Коротко**: Исправлен TS тип tronweb (fromPrivateKey возвращает string|false) для успешного `tsc` в Docker  
+**Детали**:
+- **Сделано**:
+  - добавлена проверка результата `TronWeb.utils.address.fromPrivateKey()` и явный `throw` при `false`
+- **Файлы**: `src/payments/tron/hd.ts`
+- **Причина/контекст**: `docker compose build` падал на `tsc` из-за несовпадения типов.
+- **Проверка**: `docker compose build` проходит.
+
 **Дата/время**: 2025-12-19 11:35  
 **Коротко**: Починена сборка TypeScript (3 ошибки) для успешного Docker build на Debian 12  
 **Детали**:
