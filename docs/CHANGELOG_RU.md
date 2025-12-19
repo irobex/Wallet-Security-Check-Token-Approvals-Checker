@@ -25,6 +25,22 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 12:10  
+**Коротко**: Поднят полный docker-compose стек на Debian 12, применены миграции, определён username бота  
+**Детали**:
+- **Сделано**:
+  - собраны образы и запущены сервисы: `db`, `bot`, `payments-worker`, `reports-worker`, `monitoring-worker`
+  - применены миграции в Postgres через контейнер: `node dist/db/migrate.js`
+  - диагностирован и исправлен нюанс bind-mount Postgres: `data/postgres` на хосте должен быть owned by UID:GID `999:999`
+  - проверена доступность бота через Telegram API `getMe` (без раскрытия токена): username **@WalletSecurityCheckBot**
+- **Файлы**:
+  - `docs/05_TEST_ROADMAP_RU.md` (отмечены infra пункты и добавлен прогон)
+- **Причина/контекст**: завершить “infra-smoke” перед ручными тестами в Telegram и e2e оплатой.
+- **Проверка**:
+  - `docker compose ps` показывает все сервисы `Up`
+  - `docker compose logs` без фаталов
+  - в Telegram открыть `@WalletSecurityCheckBot` и выполнить `/start`
+
 **Дата/время**: 2025-12-19 12:05  
 **Коротко**: Dockerfile копирует migrations/templates в dist (фикс миграций и HTML/PDF в проде)  
 **Детали**:

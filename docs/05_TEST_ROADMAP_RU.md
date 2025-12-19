@@ -44,20 +44,21 @@
 
 ## 1) Infra smoke (Docker / Postgres / миграции)
 
-- [ ] `docker compose up -d db` поднимает Postgres без ошибок.
-- [ ] `npm run db:migrate` проходит на чистой БД (созданы таблицы, включая `token_metadata`, `tron_hd_state`).
-- [ ] Полный стек поднимается: `docker compose up -d --build` и все сервисы в `docker compose ps` = healthy/running.
-- [ ] Логи без фаталов:
+- [x] `docker compose up -d db` поднимает Postgres без ошибок. — 2025-12-19: OK
+- [x] Миграции проходят на чистой БД (созданы таблицы, включая `token_metadata`, `tron_hd_state`). — 2025-12-19: OK (`node dist/db/migrate.js`)
+- [x] Полный стек поднимается: `docker compose up -d --build` и все сервисы в `docker compose ps` = running. — 2025-12-19: OK
+- [~] Логи без фаталов:
   - `docker compose logs -f bot`
   - `docker compose logs -f payments-worker`
   - `docker compose logs -f reports-worker`
   - `docker compose logs -f monitoring-worker`
+  - 2025-12-19: OK (есть только DeprecationWarning про `punycode`, без падений)
 
 ---
 
 ## 2) Bot UX (ручные сценарии в Telegram)
 
-- [ ] `/start` показывает read-only дисклеймер (не просит seed/private key/подпись).
+- [~] `/start` показывает read-only дисклеймер (не просит seed/private key/подпись). — 2025-12-19: нужен ваш прогон в Telegram
 - [ ] “Проверить кошелёк” → ввод **валидного** `0x...` запускает free preview.
 - [ ] Невалидный ETH-адрес → корректная ошибка (без падения процесса).
 - [ ] Free preview содержит реальные поля: approvals total / unlimited count / top tokens (и не занимает “вечность”).
@@ -164,5 +165,13 @@
 - **Результат**: PASS / FAIL
 - **Заметки**:
   - ...
+
+### 2025-12-19 — Infra smoke + миграции + старт сервисов
+- **Скоуп**: infra
+- **Результат**: PASS
+- **Заметки**:
+  - Postgres поднят, volume permissions выровнены (host bind-mount `data/postgres` должен быть owned by UID 999).
+  - Миграции `001_init.sql`, `002_token_metadata.sql` применены.
+  - Все сервисы поднялись и не падают.
 
 
