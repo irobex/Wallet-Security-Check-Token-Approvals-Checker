@@ -4,6 +4,7 @@ import { TEXTS } from "../ui/texts.js";
 import { plansInlineKeyboard } from "../ui/keyboards.js";
 import type { UserSession } from "../state.js";
 import { buildApprovalsReport } from "../../reports/engine.js";
+import { getEthProvider } from "../../eth/provider.js";
 
 export async function handleWalletInput(ctx: Context, session: UserSession) {
   const rawText =
@@ -24,13 +25,34 @@ export async function handleWalletInput(ctx: Context, session: UserSession) {
   const msg = await ctx.reply(`Адрес: ${text}\n\nСканирую approvals… (это может занять немного времени)`);
 
   try {
-    // Free preview: intentionally keep smaller limits for speed.
-    const report = await buildApprovalsReport({
-      owner: text,
-      chainId: 1,
-      maxTokenContracts: 80,
-      maxPairs: 400
-    });
+    // Free preview: try "recent blocks" first to avoid RPC limits (Infura often rejects large eth_getLogs).
+    const provider = getEthProvider();
+    const latest = await provider.getBlockNumber();
+    const ranges = [20_000, 5_000, 1_000];
+
+    let report:
+      | Awaited<ReturnType<typeof buildApprovalsReport>>
+      | null = null;
+    let usedRange: number | null = null;
+    for (const r of ranges) {
+      const fromBlock = Math.max(0, latest - r);
+      try {
+        report = await buildApprovalsReport({
+          owner: text,
+          chainId: 1,
+          maxTokenContracts: 80,
+          maxPairs: 400,
+          fromBlock,
+          toBlock: latest
+        });
+        usedRange = r;
+        break;
+      } catch {
+        // try smaller range
+      }
+    }
+
+    if (!report || !usedRange) throw new Error("free preview failed for all scan ranges");
 
     const byToken = new Map<string, number>();
     for (const a of report.approvals) {
@@ -43,8 +65,14 @@ export async function handleWalletInput(ctx: Context, session: UserSession) {
       .map(([k, v]) => `${k} (${v})`)
       .join(", ");
 
+    const scanNote =
+      usedRange < 200_000
+        ? `Free preview scan: последние ~${usedRange.toLocaleString("ru-RU")} блоков (из-за лимитов RPC)\n\n`
+        : "";
+
     const preview =
       `Адрес: ${text}\n\n` +
+      scanNote +
       `RISK: ${report.aggregates.overall_risk}\n` +
       `Active approvals: ${report.aggregates.total_approvals}\n` +
       `Unlimited approvals: ${report.aggregates.unlimited_approvals}\n` +

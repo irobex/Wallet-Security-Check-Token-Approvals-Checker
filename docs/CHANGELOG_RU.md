@@ -25,6 +25,23 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 12:35  
+**Коротко**: Free preview стал “recent scan” с авто-уменьшением диапазона + снижены дефолты ETH_APPROVALS_* для Infura  
+**Детали**:
+- **Сделано**:
+  - `buildApprovalsReport()` теперь поддерживает override диапазона блоков (`fromBlock/toBlock`)
+  - free preview в боте пробует диапазоны 20k → 5k → 1k блоков, чтобы не упираться в лимиты `eth_getLogs`
+  - дефолты `ETH_APPROVALS_CHUNK_SIZE` и `ETH_APPROVALS_MAX_RANGE_BLOCKS` снижены до более “безопасных” под Infura
+  - `env.example` и `docs/03_DEBIAN12_SETUP.md` синхронизированы с новыми дефолтами
+- **Файлы**:
+  - `src/reports/engine.ts`
+  - `src/bot/handlers/checkWallet.ts`
+  - `src/core/config.ts`
+  - `env.example`
+  - `docs/03_DEBIAN12_SETUP.md`
+- **Причина/контекст**: free preview на реальных адресах упирался в RPC лимиты и мог приводить к OOM/kill процесса при слишком большом диапазоне скана.
+- **Проверка**: в Telegram “Проверить кошелёк” выдаёт preview хотя бы по последним N блокам; в логах нет exit code 137.
+
 **Дата/время**: 2025-12-19 12:20  
 **Коротко**: Устранены проблемы теста: Postgres permissions (bind-mount) и zero-address в free preview  
 **Детали**:

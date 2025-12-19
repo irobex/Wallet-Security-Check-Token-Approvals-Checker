@@ -72,6 +72,12 @@ export async function buildApprovalsReport(args: {
   chainId?: number;
   maxTokenContracts?: number;
   maxPairs?: number;
+  /**
+   * Optional override for approvals log scan range.
+   * Useful for "free preview" to scan only recent blocks to avoid RPC limits.
+   */
+  fromBlock?: number;
+  toBlock?: number;
 }): Promise<ApprovalsReport> {
   const t0 = Date.now();
   const provider = getEthProvider();
@@ -79,15 +85,24 @@ export async function buildApprovalsReport(args: {
   const warnings: string[] = [];
 
   const latest = await provider.getBlockNumber();
+  const toBlock = Number.isFinite(args.toBlock) ? (args.toBlock as number) : latest;
   const maxRange = Number.isFinite(config.ethApprovalsMaxRangeBlocks)
     ? config.ethApprovalsMaxRangeBlocks
     : 0;
 
-  let fromBlock = Number.isFinite(config.ethApprovalsFromBlock) ? config.ethApprovalsFromBlock : 0;
-  if (maxRange > 0 && latest - fromBlock > maxRange) {
-    const capped = Math.max(0, latest - maxRange);
+  let fromBlock = Number.isFinite(args.fromBlock)
+    ? (args.fromBlock as number)
+    : Number.isFinite(config.ethApprovalsFromBlock)
+      ? config.ethApprovalsFromBlock
+      : 0;
+
+  // Guard: never scan past toBlock
+  if (fromBlock > toBlock) fromBlock = toBlock;
+
+  if (maxRange > 0 && toBlock - fromBlock > maxRange) {
+    const capped = Math.max(0, toBlock - maxRange);
     logger.warn(
-      `Approvals scan range too large (${fromBlock}..${latest}). Capping fromBlock to ${capped} (ETH_APPROVALS_MAX_RANGE_BLOCKS=${maxRange}).`
+      `Approvals scan range too large (${fromBlock}..${toBlock}). Capping fromBlock to ${capped} (ETH_APPROVALS_MAX_RANGE_BLOCKS=${maxRange}).`
     );
     warnings.push(
       `Scan range capped: fromBlock adjusted to ${capped} (ETH_APPROVALS_MAX_RANGE_BLOCKS=${maxRange}).`
@@ -96,7 +111,7 @@ export async function buildApprovalsReport(args: {
   }
 
   const approvalsProvider = new RpcApprovalEventProvider();
-  const events = await approvalsProvider.getApprovalEvents({ chainId, owner: args.owner, fromBlock, toBlock: latest });
+  const events = await approvalsProvider.getApprovalEvents({ chainId, owner: args.owner, fromBlock, toBlock });
 
   // Build candidate pairs from events (token, spender)
   const tokenCounts = new Map<string, number>();

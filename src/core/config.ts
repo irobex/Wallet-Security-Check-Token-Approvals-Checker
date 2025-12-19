@@ -21,8 +21,9 @@ export const config = {
   reportsStoragePath: getEnv("REPORTS_STORAGE_PATH", "./data/reports")!,
 
   ethApprovalsFromBlock: Number(getEnv("ETH_APPROVALS_FROM_BLOCK", "0")),
-  ethApprovalsChunkSize: Number(getEnv("ETH_APPROVALS_CHUNK_SIZE", "50000")),
-  ethApprovalsMaxRangeBlocks: Number(getEnv("ETH_APPROVALS_MAX_RANGE_BLOCKS", "2000000")),
+  // Safer defaults for RPC providers like Infura (reduce risk of OOM / eth_getLogs limits).
+  ethApprovalsChunkSize: Number(getEnv("ETH_APPROVALS_CHUNK_SIZE", "5000")),
+  ethApprovalsMaxRangeBlocks: Number(getEnv("ETH_APPROVALS_MAX_RANGE_BLOCKS", "200000")),
 
   // Helpers for parts that must fail fast:
   mustGetEnv
