@@ -1,0 +1,48 @@
+{
+  "name": "wallet-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wallet Guard — read-only approvals checker with Telegram bot and USDT TRC20 payments",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "scripts": {
+    "dev:bot": "tsx watch src/bot/bot.ts",
+    "dev:payments-worker": "tsx watch src/workers/paymentsWorker.ts",
+    "dev:reports-worker": "tsx watch src/workers/reportsWorker.ts",
+    "dev:monitoring-worker": "tsx watch src/workers/monitoringWorker.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "build": "tsc -p tsconfig.json",
+    "start:bot": "node dist/bot/bot.js",
+    "start:payments-worker": "node dist/workers/paymentsWorker.js",
+    "start:reports-worker": "node dist/workers/reportsWorker.js",
+    "start:monitoring-worker": "node dist/workers/monitoringWorker.js",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "ethers": "^6.13.4",
+    "grammy": "^1.35.0",
+    "playwright": "^1.49.1",
+    "pg": "^8.13.1",
+    "tronweb": "^6.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/ejs": "^3.1.5",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
+  }
+}
+
+

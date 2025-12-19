@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wallet Guard report</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #111; }
+      .muted { color: #555; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px 14px; }
+      .risk { font-weight: 700; }
+      .risk-high { color: #b00020; }
+      .risk-medium { color: #b26a00; }
+      .risk-low { color: #0b6b2a; }
+      table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+      th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+      th { background: #f6f6f6; text-align: left; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; }
+      .tag { display: inline-block; padding: 2px 6px; border-radius: 8px; border: 1px solid #ddd; font-size: 11px; }
+      .tag-high { border-color: #b00020; color: #b00020; }
+      .tag-medium { border-color: #b26a00; color: #b26a00; }
+      .tag-low { border-color: #0b6b2a; color: #0b6b2a; }
+      .footer { margin-top: 20px; font-size: 11px; color: #555; }
+      a { color: #0b57d0; }
+    </style>
+  </head>
+  <body>
+    <h1>Wallet Guard report</h1>
+    <div class="muted">
+      Owner: <code><%= report.owner %></code><br />
+      Chain: <%= report.chainId %><br />
+      Generated: <%= report.generated_at %><br />
+      Runtime: <%= report.runtime_ms %> ms
+    </div>
+
+    <div class="grid" style="margin-top: 12px">
+      <div class="card">
+        <div>Overall risk:</div>
+        <div class="risk <%= report.aggregates.overall_risk === 'HIGH' ? 'risk-high' : report.aggregates.overall_risk === 'MEDIUM' ? 'risk-medium' : 'risk-low' %>">
+          <%= report.aggregates.overall_risk %>
+        </div>
+      </div>
+      <div class="card">
+        <div>Counts:</div>
+        <div>Total approvals: <b><%= report.aggregates.total_approvals %></b></div>
+        <div>Unlimited: <b><%= report.aggregates.unlimited_approvals %></b></div>
+        <div>HIGH/MED/LOW: <b><%= report.aggregates.high_count %></b> / <b><%= report.aggregates.medium_count %></b> / <b><%= report.aggregates.low_count %></b></div>
+      </div>
+    </div>
+
+    <% if (report.warnings && report.warnings.length) { %>
+      <div class="card" style="margin-top: 12px; border-color: #f0c36d;">
+        <div><b>Warnings</b></div>
+        <ul>
+          <% report.warnings.forEach(function(w){ %>
+            <li class="muted"><%= w %></li>
+          <% }); %>
+        </ul>
+      </div>
+    <% } %>
+
+    <% if (urgent && urgent.length) { %>
+      <h2 style="margin-top: 18px">Top urgent revokes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Token</th>
+            <th>Spender</th>
+            <th>Allowance</th>
+            <th>Reason</th>
+            <th>Revoke</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% urgent.forEach(function(a, idx){ %>
+            <tr>
+              <td><%= idx+1 %></td>
+              <td><%= a.token_symbol || a.token_address %></td>
+              <td><code><%= a.spender_address %></code></td>
+              <td><%= a.allowance_human %> <% if (a.is_unlimited) { %><span class="tag tag-high">UNLIMITED</span><% } %></td>
+              <td><%= a.human_reason %></td>
+              <td><a href="<%= a.revoke_link %>">revoke.cash</a></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <h2 style="margin-top: 18px">All approvals</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Token</th>
+          <th>Spender</th>
+          <th>Type</th>
+          <th>Allowance</th>
+          <th>Action</th>
+          <th>Reasons</th>
+          <th>Revoke</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% report.approvals.forEach(function(a){ %>
+          <tr>
+            <td>
+              <% if (a.risk_level === 'HIGH') { %><span class="tag tag-high">HIGH</span><% } %>
+              <% if (a.risk_level === 'MEDIUM') { %><span class="tag tag-medium">MEDIUM</span><% } %>
+              <% if (a.risk_level === 'LOW') { %><span class="tag tag-low">LOW</span><% } %>
+            </td>
+            <td>
+              <div><b><%= a.token_symbol || '(unknown)' %></b></div>
+              <div class="muted"><code><%= a.token_address %></code></div>
+            </td>
+            <td><code><%= a.spender_address %></code></td>
+            <td><%= a.spender_type %></td>
+            <td>
+              <div><%= a.allowance_human %></div>
+              <div class="muted"><code><%= a.allowance_raw %></code></div>
+              <% if (a.is_unlimited) { %><div><span class="tag tag-high">UNLIMITED</span></div><% } %>
+            </td>
+            <td><b><%= a.action %></b></td>
+            <td>
+              <div><%= a.human_reason %></div>
+              <div class="muted"><%= a.reason_codes.join(', ') %></div>
+            </td>
+            <td><a href="<%= a.revoke_link %>">revoke.cash</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div><b>Disclaimer:</b> This is a read-only security-oriented report. It is not financial advice.</div>
+      <div>Never share your seed phrase or private keys. Wallet Guard does not ask for them.</div>
+    </div>
+  </body>
+</html>
+
+
