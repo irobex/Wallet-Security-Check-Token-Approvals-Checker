@@ -76,7 +76,7 @@ async function tick() {
             amountMicro,
             topupTrx: config.tronSweepTopupTrx
           });
-          logger.info(`sweep: done order=${order.id} topupTx=${res.topupTx ?? "—"} sweepTx=${res.sweepTx}`);
+          logger.info(`sweep: done order=${order.id} topupTxs=${(res.topupTxs && res.topupTxs.length) ? res.topupTxs.join(",") : "—"} sweepTx=${res.sweepTx}`);
         }
       } catch (e) {
         logger.error(`payments-worker: failed processing order ${order.id}`, e);

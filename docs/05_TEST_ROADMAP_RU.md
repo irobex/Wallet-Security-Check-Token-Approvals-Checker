@@ -191,3 +191,14 @@
   - Заказ завершён `DELIVERED`, CSV сгенерирован.
 
 
+
+### 2025-12-19 — TRON auto-sweep: восстановление зависшей оплаты (OUT_OF_ENERGY) + фиксы
+- **Скоуп**: payments
+- **Результат**: PASS
+- **Заметки**:
+  - Обнаружено: USDT sweep мог "успешно" возвращать `txid`, но фактически транзакция завершалась `OUT_OF_ENERGY` (receipt), из-за чего USDT оставался на pay-адресе, а TRX расходовался.
+  - Фикс: sweep теперь ждёт receipt, валится на failed-результате с понятным сообщением, и при `OUT_OF_ENERGY` увеличивает TRX на pay-адресе + повторяет попытку.
+  - Практика: восстановили уже полученные **3 USDT** со старого pay-адреса `TDaN1sDt5uQNnBBqDy27Ph2qhtpE49XLY1` на `TUwhDsN2T2mj7JsYySHhywQBfW4SkDjMgA`.
+  - Tx:
+    - topup TRX: `7a06f3fb60bc117f0ede58e1308b93e80ab830b406650b2fdac0f679a7bc3dcf`
+    - sweep USDT: `81359de0e59433856a8e5b853326f0e6040592a674acaa65e2637adeec7cee3e`
