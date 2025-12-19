@@ -15,6 +15,8 @@ import { getOrderById } from "../db/repos/ordersRepo.js";
 import type { ApprovalsReport } from "../reports/types.js";
 import { InputFile } from "grammy";
 import { notifyAdmin } from "../core/adminAlerts.js";
+import { fetchTrc20TransactionsForAccount } from "../payments/tron/trongrid.js";
+import { TRON_USDT_CONTRACT } from "../payments/tron/usdt_trc20.js";
 
 const token = config.botToken;
 if (!token) {
@@ -81,10 +83,32 @@ bot.callbackQuery(/^plan:(LITE|PRO|MAX)$/, async (ctx) => {
   });
   session.lastOrderId = order.id;
 
+  // TronGrid preflight: helps avoid "send money and then discover monitoring is broken".
+  // If it fails, we still show the address, but warn user/admin.
+  let tronGridOk = true;
+  try {
+    await fetchTrc20TransactionsForAccount({
+      account: payAddress,
+      contractAddress: TRON_USDT_CONTRACT,
+      onlyConfirmed: true,
+      limit: 1
+    });
+  } catch (e) {
+    tronGridOk = false;
+    const msg = (e as Error)?.message ?? String(e);
+    logger.warn(`TronGrid preflight failed for order=${order.id} addr=${payAddress}: ${msg}`);
+    void notifyAdmin(`TronGrid preflight failed (order=${order.id}): ${msg}`);
+  }
+
+  const warnLine = tronGridOk
+    ? ""
+    : "\n⚠️ Внимание: сейчас есть проблема с доступом к TronGrid. Детект оплаты может быть задержан.\n";
+
   await ctx.reply(
     `Оплатите USDT (TRC20) на адрес:\n${payAddress}\n\n` +
       `Сумма: ${price} USDT\n\n` +
-      "После оплаты отчёт придёт автоматически (обычно до 1 минуты).",
+      "После оплаты отчёт придёт автоматически (обычно до 1 минуты)." +
+      warnLine,
     { reply_markup: paymentInlineKeyboard(order.id) }
   );
 });

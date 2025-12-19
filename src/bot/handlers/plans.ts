@@ -3,7 +3,7 @@ import type { Context } from "grammy";
 export async function handlePlans(ctx: Context) {
   await ctx.reply(
     "Тарифы:\n\n" +
-      "🟢 Lite — 1 USDT\n" +
+      "🟢 Lite — 3 USDT\n" +
       "- обзор approvals в Ethereum\n" +
       "- ограниченный список\n" +
       "- CSV\n\n" +

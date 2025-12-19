@@ -25,6 +25,20 @@
 
 ## Записи
 
+**Дата/время**: 2025-12-19 13:30  
+**Коротко**: Lite тариф = 3 USDT (min payout) + усилены логи и preflight для оплаты (одной транзакции достаточно)  
+**Детали**:
+- **Сделано**:
+  - Lite price изменён на `3.00` (в UI и логике создания заказа)
+  - TronGrid preflight при создании заказа: если API недоступен — предупреждение и admin alert до отправки денег
+  - payments-worker логирует “watching order … expected … addr …” один раз на заказ
+  - при наличии входящих tx, но сумме меньше ожидаемой — логируем диагностическое сообщение (best value / expected / tx)
+- **Файлы**:
+  - `src/bot/ui/keyboards.ts`, `src/bot/handlers/plans.ts`, `src/bot/bot.ts`
+  - `src/workers/paymentsWorker.ts`, `src/payments/tron/monitor.ts`
+  - `README.md`, `docs/README.md`, `docs/project.md`
+- **Причина/контекст**: минимальная сумма вывода 2.6 USDT → тестируем e2e оплату на 3 USDT и минимизируем количество транзакций за счёт улучшенной диагностики.
+
 **Дата/время**: 2025-12-19 12:55  
 **Коротко**: Lite тариф временно снижен до 1 USDT для e2e проверки оплаты TRC20  
 **Детали**:

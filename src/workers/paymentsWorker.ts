@@ -6,6 +6,7 @@ import { notifyAdmin } from "../core/adminAlerts.js";
 logger.info("payments-worker started");
 
 let running = false;
+const loggedOrders = new Set<string>();
 
 async function tick() {
   if (running) return;
@@ -21,6 +22,14 @@ async function tick() {
       if (order.tx_hash) continue;
 
       try {
+        if (!loggedOrders.has(order.id)) {
+          loggedOrders.add(order.id);
+          const ageMin = (Date.now() - new Date(order.created_at).getTime()) / 60000;
+          logger.info(
+            `payments-worker: watching order=${order.id} status=${order.status} expected=${order.price_usdt} addr=${order.pay_address} ageMin=${ageMin.toFixed(1)}`
+          );
+        }
+
         const match = await findIncomingUsdtPayment({
           payAddress: order.pay_address,
           expectedAmountUsdt: order.price_usdt

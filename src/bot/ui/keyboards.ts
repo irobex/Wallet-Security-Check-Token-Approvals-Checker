@@ -12,7 +12,7 @@ export function mainKeyboard(): Keyboard {
 
 export function plansInlineKeyboard(): InlineKeyboard {
   return new InlineKeyboard()
-    .text("🟢 Lite — 1 USDT", "plan:LITE")
+    .text("🟢 Lite — 3 USDT", "plan:LITE")
     .row()
     .text("🟡 Pro — 25 USDT", "plan:PRO")
     .row()
@@ -36,7 +36,7 @@ export function reportInlineKeyboard(orderId: string): InlineKeyboard {
 }
 
 export function formatPlanPrice(plan: Plan): string {
-  if (plan === "LITE") return "1.00";
+  if (plan === "LITE") return "3.00";
   if (plan === "PRO") return "25.00";
   return "79.00";
 }

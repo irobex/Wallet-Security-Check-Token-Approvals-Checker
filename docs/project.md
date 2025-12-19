@@ -75,7 +75,7 @@ PDF/HTML файл (по тарифу),
 2) Тарифы (3 уровня)
 2.1 Lite (дешёвый, “пощупать”)
 
-Цена: 1 USDT *(temporary for e2e payment testing)*
+Цена: 3 USDT *(temporary for e2e payment testing)*
 Функции:
 
 1 сеть анализа: Ethereum
@@ -330,7 +330,7 @@ unlimited count
 топ токенов
 И кнопки:
 
-“🟢 Lite — 1 USDT”
+“🟢 Lite — 3 USDT”
 
 “🟡 Pro — 25 USDT”
 
