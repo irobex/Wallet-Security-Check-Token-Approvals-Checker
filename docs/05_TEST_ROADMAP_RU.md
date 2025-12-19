@@ -59,7 +59,7 @@
 ## 2) Bot UX (ручные сценарии в Telegram)
 
 - [~] `/start` показывает read-only дисклеймер (не просит seed/private key/подпись). — 2025-12-19: нужен ваш прогон в Telegram
-- [ ] “Проверить кошелёк” → ввод **валидного** `0x...` запускает free preview.
+- [~] “Проверить кошелёк” → ввод **валидного** `0x...` запускает free preview. — 2025-12-19: первый прогон на `0x000…000` упёрся в RPC/лимиты; теперь zero-address запрещён, нужен повтор на реальном адресе
 - [ ] Невалидный ETH-адрес → корректная ошибка (без падения процесса).
 - [ ] Free preview содержит реальные поля: approvals total / unlimited count / top tokens (и не занимает “вечность”).
 
@@ -173,5 +173,13 @@
   - Postgres поднят, volume permissions выровнены (host bind-mount `data/postgres` должен быть owned by UID 999).
   - Миграции `001_init.sql`, `002_token_metadata.sql` применены.
   - Все сервисы поднялись и не падают.
+
+### 2025-12-19 — Bot UX: первый прогон (обнаружены лимиты RPC и проблема Postgres permissions)
+- **Скоуп**: bot / infra
+- **Результат**: FAIL
+- **Заметки**:
+  - Free preview на `0x000…000` упёрся в лимиты провайдера (Infura) → бот показал fallback (“выберите тариф”).
+  - При этом прилетел admin alert от reports-worker из-за `pg_filenode.map: Permission denied` (Postgres bind-mount).
+  - Фиксы: Postgres переведён на named volume, zero-address заблокирован; нужен повторный прогон на реальном адресе.
 
 
